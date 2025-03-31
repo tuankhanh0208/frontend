@@ -163,7 +163,6 @@ const Dashboard = () => {
   };
   
   return (
-    <AdminLayout title="Dashboard">
       <DashboardContainer>
         <StatsGrid>
           <StatCard>
@@ -247,7 +246,6 @@ const Dashboard = () => {
           </ChartCard>
         </ChartContainer>
       </DashboardContainer>
-    </AdminLayout>
   );
 };
 

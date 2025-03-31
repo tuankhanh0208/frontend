@@ -8,12 +8,10 @@ const Container = styled.div`
 
 const OrderList = () => {
   return (
-    <AdminLayout title="Order Management">
       <Container>
         <h2>Order Management</h2>
         <p>This page will display a list of orders and allow admins to manage them.</p>
       </Container>
-    </AdminLayout>
   );
 };
 

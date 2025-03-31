@@ -106,7 +106,7 @@ const UserDropdown = () => {
   const { currentUser, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
-  
+
   // Get first letter of username for avatar
   const getInitial = () => {
     if (currentUser && currentUser.username) {
@@ -114,7 +114,7 @@ const UserDropdown = () => {
     }
     return 'U';
   };
-  
+
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -122,33 +122,33 @@ const UserDropdown = () => {
         setIsOpen(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  
+
   // Handle mouse enter and leave for dropdown
   const handleMouseEnter = () => {
     setIsOpen(true);
   };
-  
+
   // Handle mouse leave to close dropdown
   const handleMouseLeave = () => {
     setIsOpen(false);
   };
-  
+
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
   };
-  
+
   const handleLogout = async () => {
     await logout();
     setIsOpen(false);
     navigate('/');
   };
-  
+
   return (
     <UserContainer ref={dropdownRef}>
       <div onClick={toggleDropdown} onMouseEnter={handleMouseEnter}>
@@ -160,13 +160,13 @@ const UserDropdown = () => {
         {currentUser?.username || 'User'}
         <FaChevronDown />
       </UserInfo>
-      
+
       <DropdownMenu isOpen={isOpen} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
         <MenuItem to="/profile">
           <FaUser />
           Tài Khoản Của Tôi
         </MenuItem>
-        <MenuItem to="/orders">
+        <MenuItem to="/profile#orders">
           <FaShoppingBag />
           Đơn Mua
         </MenuItem>

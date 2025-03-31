@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import styled from 'styled-components';
-import { Link } from 'react-router-dom';
-import { FaUser, FaShoppingBag, FaTicketAlt, FaHeart, FaSignOutAlt, FaEdit } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaUser, FaShoppingBag, FaTicketAlt, FaHeart, FaSignOutAlt } from 'react-icons/fa';
 import useUser from '../../../hooks/useUser';
+import { AuthContext } from '../../../context/AuthContext';
 
 const ProfileContainer = styled.div`
   display: flex;
@@ -45,7 +46,7 @@ const Avatar = styled.div`
   justify-content: center;
   margin: 0 auto 15px;
   overflow: hidden;
-  border: 2px solid #4CAF50;
+  border: 2px solid #0A4D7C;
   transition: all 0.3s ease;
   
   &:hover {
@@ -86,24 +87,48 @@ const NavItem = styled.li`
   }
 `;
 
+const TabLink = styled.a`
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  color: ${props => props.active ? '#0A4D7C' : '#333'};
+  text-decoration: none;
+  transition: all 0.3s ease;
+  background-color: ${props => props.active ? 'rgba(10, 77, 124, 0.1)' : 'transparent'};
+  font-weight: ${props => props.active ? '600' : 'normal'};
+  cursor: pointer;
+  
+  svg {
+    margin-right: 10px;
+    font-size: 18px;
+    color: #0A4D7C;
+  }
+  
+  &:hover {
+    background-color: #f5f5f5;
+    color: #0A4D7C;
+  }
+`;
+
 const NavLink = styled(Link)`
   display: flex;
   align-items: center;
   padding: 15px 20px;
-  color: ${props => props.active ? '#4CAF50' : '#333'};
+  color: ${props => props.active ? '#0A4D7C' : '#333'};
   text-decoration: none;
-  transition: all 0.2s ease;
-  background-color: ${props => props.active ? 'rgba(76, 175, 80, 0.1)' : 'transparent'};
+  transition: all 0.3s ease;
+  background-color: ${props => props.active ? 'rgba(10, 77, 124, 0.1)' : 'transparent'};
   font-weight: ${props => props.active ? '600' : 'normal'};
   
   svg {
     margin-right: 10px;
     font-size: 18px;
+    color: #0A4D7C;
   }
   
   &:hover {
-    background-color: rgba(76, 175, 80, 0.1);
-    color: #4CAF50;
+    background-color: #f5f5f5;
+    color: #0A4D7C;
   }
 `;
 
@@ -121,30 +146,21 @@ const Content = styled.div`
   }
 `;
 
-const ContentHeader = styled.div`
-  background: #f5f5f5;
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
-  
-  h2 {
-    margin: 0;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    
-    svg {
-      margin-right: 10px;
-      color: #4CAF50;
-    }
-  }
-`;
-
-const ContentBody = styled.div`
-  padding: 20px;
-`;
-
-const UserProfile = ({ activeTab = 'profile', children }) => {
+const UserProfile = ({ activeTab = 'profile', children, onTabChange }) => {
   const { user, loading } = useUser();
+  const { logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  const handleTabClick = (tab) => {
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+  };
 
   if (loading) {
     return <div>Đang tải...</div>;
@@ -163,29 +179,53 @@ const UserProfile = ({ activeTab = 'profile', children }) => {
         
         <NavMenu>
           <NavItem>
-            <NavLink to="/profile" active={activeTab === 'profile' ? 1 : 0}>
+            <TabLink 
+              href="#profile" 
+              active={activeTab === 'profile' ? 1 : 0}
+              onClick={(e) => {
+                e.preventDefault();
+                handleTabClick('profile');
+              }}
+            >
               <FaUser /> Hồ Sơ
-            </NavLink>
+            </TabLink>
           </NavItem>
           <NavItem>
-            <NavLink to="/orders" active={activeTab === 'orders' ? 1 : 0}>
+            <TabLink 
+              href="#orders" 
+              active={activeTab === 'orders' ? 1 : 0}
+              onClick={(e) => {
+                e.preventDefault();
+                handleTabClick('orders');
+              }}
+            >
               <FaShoppingBag /> Đơn Mua
-            </NavLink>
+            </TabLink>
           </NavItem>
           <NavItem>
-            <NavLink to="/vouchers" active={activeTab === 'vouchers' ? 1 : 0}>
+            <TabLink 
+              href="#vouchers" 
+              active={activeTab === 'vouchers' ? 1 : 0}
+              onClick={(e) => {
+                e.preventDefault();
+                handleTabClick('vouchers');
+              }}
+            >
               <FaTicketAlt /> Kho Voucher
-            </NavLink>
+            </TabLink>
           </NavItem>
-          <NavItem>
+          {/* <NavItem>
             <NavLink to="/wishlist" active={activeTab === 'wishlist' ? 1 : 0}>
               <FaHeart /> Sản Phẩm Yêu Thích
             </NavLink>
-          </NavItem>
+          </NavItem> */}
           <NavItem>
-            <NavLink to="/logout">
+            <TabLink 
+              href="#" 
+              onClick={handleLogout}
+            >
               <FaSignOutAlt /> Đăng Xuất
-            </NavLink>
+            </TabLink>
           </NavItem>
         </NavMenu>
       </Sidebar>

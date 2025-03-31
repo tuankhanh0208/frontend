@@ -111,8 +111,7 @@ const mockService = {
   },
   
   getCategories: async () => {
-    await delay(300);
-    
+    await delay(300);    
     return categories;
   },
   

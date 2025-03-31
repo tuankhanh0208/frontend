@@ -8,7 +8,7 @@ import {
   FaShoppingCart, 
   FaBoxes, 
   FaTags, 
-  FaCogs, 
+  FaHome, 
   FaSignOutAlt,
   FaBars
 } from 'react-icons/fa';
@@ -215,8 +215,8 @@ const AdminLayout = ({ children, title }) => {
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link to="/admin/settings" className={location.pathname.startsWith('/admin/settings') ? 'active' : ''}>
-              <FaCogs /> Settings
+            <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
+              <FaHome /> Trang chủ
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>

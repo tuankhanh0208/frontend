@@ -1,508 +1,1616 @@
-# Triển Khai Hệ Thống Quản Lý Đơn Hàng
+# Triển Khai Giao Diện Danh Mục Sản Phẩm
 
-## Cấu trúc dự án
+## 1. Sidebar Danh Mục
 
-Dự án được triển khai với Next.js, Tailwind CSS, và các thành phần React.
+Thành phần sidebar hiển thị cấu trúc phân cấp danh mục, cho phép lọc sản phẩm theo danh mục và giá.
 
-## Các file chính
+```javascript
+// src/components/category/CategorySidebar/CategorySidebar.js
+import React, { useState, useEffect } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import styled from 'styled-components';
+import { FaChevronDown, FaChevronUp, FaSearch } from 'react-icons/fa';
+import productService from '../../../services/productService';
 
-### 1. CSS Toàn cục (globals.css)
+const SidebarContainer = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+`;
 
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 16 100% 50%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 16 100% 50%;
-
-    --radius: 0.5rem;
+const SidebarHeader = styled.div`
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+    display: flex;
+    align-items: center;
   }
+`;
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+const SidebarContent = styled.div`
+  padding: 15px 0;
+`;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 16 100% 50%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 16 100% 50%;
+const SearchBox = styled.div`
+  padding: 0 20px 15px;
+  position: relative;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  
+  input {
+    width: 100%;
+    padding: 10px 15px 10px 35px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    
+    &:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
   }
-}
-
-@layer base {
-  * {
-    @apply border-border;
+  
+  svg {
+    position: absolute;
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
   }
-  body {
-    @apply bg-background text-foreground;
+`;
+
+const CategoryList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+`;
+
+const CategoryItem = styled.li`
+  border-bottom: 1px solid #f5f5f5;
+  
+  &:last-child {
+    border-bottom: none;
   }
-}
-```
+`;
 
-### 2. Layout chính (layout.tsx)
+const CategoryLink = styled(Link)`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-weight: ${props => props.active ? '600' : 'normal'};
+  background-color: ${props => props.active ? 'rgba(76, 175, 80, 0.1)' : 'transparent'};
+  
+  &:hover {
+    background-color: #f9f9f9;
+    color: #4CAF50;
+  }
+  
+  .count {
+    color: #999;
+    font-size: 12px;
+  }
+`;
 
-```tsx
-import type React from "react"
-import "./globals.css"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
+const MainCategoryLink = styled(CategoryLink)`
+  font-weight: 500;
+`;
 
-const inter = Inter({ subsets: ["latin"] })
+const SubcategoryList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: ${props => props.expanded ? '500px' : '0'};
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+`;
 
-export const metadata: Metadata = {
-  title: "Quản Lý Đơn Hàng",
-  description: "Trang quản lý đơn hàng e-commerce",
-}
+const SubcategoryItem = styled.li``;
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+const SubcategoryLink = styled(Link)`
+  display: block;
+  padding: 10px 20px 10px 35px;
+  color: #666;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-weight: ${props => props.active ? '600' : 'normal'};
+  background-color: ${props => props.active ? 'rgba(76, 175, 80, 0.05)' : 'transparent'};
+  
+  &:hover {
+    background-color: #f9f9f9;
+    color: #4CAF50;
+  }
+  
+  &::before {
+    content: '•';
+    margin-right: 8px;
+  }
+  
+  .count {
+    color: #999;
+    font-size: 12px;
+    float: right;
+  }
+`;
+
+const ToggleButton = styled.button`
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover {
+    color: #4CAF50;
+  }
+`;
+
+const PriceFilter = styled.div`
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  
+  h4 {
+    margin: 0 0 15px;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .range-inputs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    
+    input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      
+      &:focus {
+        outline: none;
+        border-color: #4CAF50;
+      }
+    }
+  }
+  
+  .filter-button {
+    width: 100%;
+    padding: 8px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+    
+    &:hover {
+      background-color: #388E3C;
+    }
+  }
+`;
+
+const CategorySidebar = ({ onFilterChange }) => {
+  const { id: categoryId } = useParams();
+  const [categories, setCategories] = useState([]);
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const data = await productService.getCategories();
+        
+        // Add subcategories to the categories (sample data)
+        const categoriesWithSubs = data.map(category => ({
+          ...category,
+          subcategories: generateSubcategories(category)
+        }));
+        
+        setCategories(categoriesWithSubs);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCategories();
+  }, []);
+  
+  const generateSubcategories = (category) => {
+    if (category.id === 1) { // Thịt heo
+      return [
+        { id: 101, name: "Ba chỉ heo", slug: "ba-chi-heo", count: 12 },
+        { id: 102, name: "Thịt đùi", slug: "thit-dui", count: 8 },
+        { id: 103, name: "Sườn heo", slug: "suon-heo", count: 10 },
+        { id: 104, name: "Nạc vai", slug: "nac-vai", count: 6 }
+      ];
+    } else if (category.id === 2) { // Thịt bò
+      return [
+        { id: 201, name: "Thăn bò", slug: "than-bo", count: 9 },
+        { id: 202, name: "Bắp bò", slug: "bap-bo", count: 7 },
+        { id: 203, name: "Gầu bò", slug: "gau-bo", count: 5 }
+      ];
+    } else if (category.id === 3) { // Cá, hải sản
+      return [
+        { id: 301, name: "Cá hồi", slug: "ca-hoi", count: 6 },
+        { id: 302, name: "Tôm sú", slug: "tom-su", count: 8 },
+        { id: 303, name: "Cá thu", slug: "ca-thu", count: 4 },
+        { id: 304, name: "Mực", slug: "muc", count: 5 }
+      ];
+    }
+    
+    return [];
+  };
+  
+  const toggleCategory = (categoryId) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }));
+  };
+  
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+  
+  const handlePriceFilter = () => {
+    if (onFilterChange) {
+      onFilterChange({
+        minPrice: minPrice ? parseInt(minPrice) : undefined,
+        maxPrice: maxPrice ? parseInt(maxPrice) : undefined
+      });
+    }
+  };
+  
+  const filteredCategories = categories.filter(category => 
+    category.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
   return (
-    <html lang="vi">
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
-      </body>
-    </html>
-  )
-}
-```
-
-### 3. Trang chính (page.tsx)
-
-```tsx
-import OrderManagement from "@/components/order-management"
-
-export default function Home() {
-  return (
-    <main className="min-h-screen bg-gray-100">
-      <OrderManagement />
-    </main>
-  )
-}
-```
-
-### 4. Component quản lý đơn hàng (order-management.tsx)
-
-```tsx
-"use client"
-
-import { useState } from "react"
-import { Search, Bell, User, ShoppingBag, Gift, CreditCard, MessageSquare, Store, CheckCircle } from "lucide-react"
-import Image from "next/image"
-import { cn } from "@/lib/utils"
-
-const orderTabs = [
-  { id: "all", label: "Tất cả", active: true },
-  { id: "pending", label: "Chờ thanh toán", active: false },
-  { id: "shipping", label: "Vận chuyển", active: false },
-  { id: "delivering", label: "Chờ giao hàng", count: 1, active: false },
-  { id: "completed", label: "Hoàn thành", active: false },
-  { id: "cancelled", label: "Đã hủy", active: false },
-  { id: "refund", label: "Trả hàng/Hoàn tiền", active: false },
-]
-
-const sidebarItems = [
-  { id: "notifications", label: "Thông Báo", icon: <Bell className="w-5 h-5 text-orange-500" /> },
-  { id: "account", label: "Tài Khoản Của Tôi", icon: <User className="w-5 h-5 text-blue-500" /> },
-  { id: "orders", label: "Đơn Mua", icon: <ShoppingBag className="w-5 h-5 text-orange-500" /> },
-  { id: "vouchers", label: "Kho Voucher", icon: <Gift className="w-5 h-5 text-orange-500" /> },
-  { id: "coins", label: "Shopee Xu", icon: <CreditCard className="w-5 h-5 text-orange-500" /> },
-  {
-    id: "freeship",
-    label: "4.4 Siêu Hội Freeship",
-    icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
-    badge: "New",
-  },
-]
-
-const orders = [
-  {
-    id: 1,
-    shop: { name: "linggingno.vn", favorite: true },
-    product: {
-      name: "Cáp Sạc USB Cho Đồng Hồ T55 Pro T500 Pro",
-      image: "/placeholder.svg?height=80&width=80",
-      quantity: 1,
-      originalPrice: "₫19.142",
-      price: "₫9.591",
-    },
-    totalPrice: "₫9.591",
-    status: "CHỜ GIAO HÀNG",
-    isDelivered: true,
-    actions: ["Đã Nhận Hàng", "Yêu Cầu Trả Hàng/Hoàn Tiền", "Liên Hệ Người Bán"],
-    message:
-      'Vui lòng chỉ nhấn "Đã nhận được hàng" khi đơn hàng đã được giao đến bạn và sản phẩm nhận được không có vấn đề nào.',
-  },
-  {
-    id: 2,
-    shop: { name: "KingsnamTechnology", favorite: true },
-    product: {
-      name: "Box ổ cứng M2 NVMe M2 SATA NGFF cao cấp",
-      image: "/placeholder.svg?height=80&width=80",
-      quantity: 1,
-      category: "Phân loại hàng: M2 NVME",
-      originalPrice: "₫260.000",
-      price: "₫195.000",
-    },
-    totalPrice: "₫164.000",
-    status: "HOÀN THÀNH",
-    isCompleted: true,
-    actions: ["Mua Lại", "Liên Hệ Người Bán"],
-  },
-]
-
-export default function OrderManagement() {
-  const [activeTab, setActiveTab] = useState("all")
-
-  return (
-    <div className="flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-3 flex items-center">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gray-200 rounded-full overflow-hidden">
-              <Image
-                src="/placeholder.svg?height=40&width=40"
-                alt="User avatar"
-                width={40}
-                height={40}
-                className="object-cover"
-              />
-            </div>
-            <div>
-              <p className="font-medium">vannamdang03</p>
-              <button className="text-xs text-gray-500 flex items-center">
-                <span>Sửa Hồ Sơ</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-4 flex flex-1">
-        {/* Sidebar */}
-        <div className="w-64 pr-6">
-          <nav className="space-y-2">
-            {sidebarItems.map((item) => (
-              <a key={item.id} href="#" className="flex items-center p-2 hover:bg-gray-100 rounded-md group">
-                {item.icon}
-                <span className={cn("ml-3", item.id === "account" ? "text-blue-500" : "text-gray-700")}>
-                  {item.label}
-                </span>
-                {item.badge && (
-                  <span className="ml-2 px-1.5 py-0.5 text-xs text-white bg-red-500 rounded">{item.badge}</span>
-                )}
-              </a>
-            ))}
-          </nav>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1">
-          {/* Tabs */}
-          <div className="bg-white rounded-t-md border-b border-gray-200">
-            <div className="flex">
-              {orderTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  className={cn(
-                    "px-4 py-3 text-sm font-medium relative",
-                    activeTab === tab.id ? "text-orange-500 border-b-2 border-orange-500" : "text-gray-700",
-                  )}
-                  onClick={() => setActiveTab(tab.id)}
+    <SidebarContainer>
+      <SidebarHeader>
+        <h3>Danh mục sản phẩm</h3>
+      </SidebarHeader>
+      
+      <SidebarContent>
+        <SearchBox>
+          <FaSearch />
+          <input 
+            type="text" 
+            placeholder="Tìm danh mục..." 
+            value={searchTerm}
+            onChange={handleSearchChange}
+          />
+        </SearchBox>
+        
+        <CategoryList>
+          {loading ? (
+            <div style={{ padding: '20px', textAlign: 'center' }}>Đang tải...</div>
+          ) : filteredCategories.length > 0 ? (
+            filteredCategories.map(category => (
+              <CategoryItem key={category.id}>
+                <MainCategoryLink 
+                  to={`/categories/${category.id}`}
+                  active={category.id === Number(categoryId) ? 1 : 0}
                 >
-                  {tab.label}
-                  {tab.count && <span className="ml-1 text-orange-500">({tab.count})</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="bg-white p-4 border-b border-gray-200">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Bạn có thể tìm kiếm theo tên Shop, ID đơn hàng hoặc Tên Sản phẩm"
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-orange-500"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            </div>
-          </div>
-
-          {/* Orders */}
-          <div className="space-y-4 mt-4">
-            {orders.map((order) => (
-              <div key={order.id} className="bg-white rounded-md shadow-sm overflow-hidden">
-                {/* Order Header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b">
-                  <div className="flex items-center space-x-2">
-                    <span
-                      className={cn(
-                        "px-2 py-1 text-xs font-medium rounded",
-                        order.shop.favorite ? "bg-orange-100 text-orange-500" : "bg-gray-100",
-                      )}
-                    >
-                      Yêu thích
-                    </span>
-                    <span className="font-medium">{order.shop.name}</span>
-                    <button className="px-2 py-1 text-xs bg-orange-500 text-white rounded">
-                      <MessageSquare className="w-3 h-3 inline mr-1" />
-                      Chat
-                    </button>
-                    <button className="px-2 py-1 text-xs border border-gray-300 rounded flex items-center">
-                      <Store className="w-3 h-3 mr-1" />
-                      Xem Shop
-                    </button>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {order.isDelivered && (
-                      <div className="flex items-center text-green-500">
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        <span className="text-sm">Giao hàng thành công</span>
-                      </div>
-                    )}
-                    <span
-                      className={cn("text-sm font-medium", order.isDelivered ? "text-orange-500" : "text-green-500")}
-                    >
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Order Content */}
-                <div className="p-4">
-                  <div className="flex">
-                    <div className="w-16 h-16 mr-4">
-                      <Image
-                        src={order.product.image || "/placeholder.svg"}
-                        alt={order.product.name}
-                        width={80}
-                        height={80}
-                        className="object-cover border border-gray-200 rounded"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <div>
-                          <h3 className="text-sm font-medium">{order.product.name}</h3>
-                          <p className="text-xs text-gray-500 mt-1">x{order.product.quantity}</p>
-                          {order.product.category && (
-                            <p className="text-xs text-gray-500 mt-1">{order.product.category}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-gray-500 line-through">{order.product.originalPrice}</p>
-                          <p className="text-sm text-orange-500">{order.product.price}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Footer */}
-                <div className="px-4 py-3 bg-gray-50 border-t">
-                  {order.message && (
-                    <div className="mb-3 p-3 bg-gray-100 text-xs text-gray-600 rounded">{order.message}</div>
+                  {category.name}
+                  {category.subcategories?.length > 0 && (
+                    <ToggleButton onClick={(e) => {
+                      e.preventDefault();
+                      toggleCategory(category.id);
+                    }}>
+                      {expandedCategories[category.id] ? <FaChevronUp /> : <FaChevronDown />}
+                    </ToggleButton>
                   )}
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <span className="text-sm text-gray-500">Thành tiền:</span>
-                      <span className="ml-2 text-xl font-medium text-orange-500">{order.totalPrice}</span>
-                    </div>
-                    <div className="flex space-x-2">
-                      {order.actions.map((action, index) => (
-                        <button
-                          key={index}
-                          className={cn(
-                            "px-4 py-2 text-sm rounded",
-                            index === 0 && !order.isCompleted
-                              ? "bg-orange-500 text-white"
-                              : "border border-gray-300 text-gray-700",
-                          )}
+                </MainCategoryLink>
+                
+                {category.subcategories?.length > 0 && (
+                  <SubcategoryList expanded={expandedCategories[category.id]}>
+                    {category.subcategories.map(subcategory => (
+                      <SubcategoryItem key={subcategory.id}>
+                        <SubcategoryLink 
+                          to={`/categories/${category.id}/${subcategory.slug}`}
+                          active={false}
                         >
-                          {action}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                          {subcategory.name}
+                          <span className="count">({subcategory.count})</span>
+                        </SubcategoryLink>
+                      </SubcategoryItem>
+                    ))}
+                  </SubcategoryList>
+                )}
+              </CategoryItem>
+            ))
+          ) : (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+              Không tìm thấy danh mục nào
+            </div>
+          )}
+        </CategoryList>
+        
+        <PriceFilter>
+          <h4>Lọc theo giá</h4>
+          <div className="range-inputs">
+            <input 
+              type="number" 
+              placeholder="Từ"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+            />
+            <input 
+              type="number" 
+              placeholder="Đến"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+            />
           </div>
-        </div>
-      </div>
+          <button className="filter-button" onClick={handlePriceFilter}>
+            Áp dụng
+          </button>
+        </PriceFilter>
+      </SidebarContent>
+    </SidebarContainer>
+  );
+};
 
-      {/* Chat Button */}
-      <div className="fixed bottom-4 right-4">
-        <button className="bg-orange-500 text-white p-3 rounded-full shadow-lg">
-          <MessageSquare className="w-6 h-6" />
-        </button>
-      </div>
-    </div>
-  )
-}
+export default CategorySidebar;
 ```
 
-### 5. Cấu hình Tailwind (tailwind.config.ts)
+## 2. Trang Danh Mục Sản Phẩm
 
-```typescript
-import type { Config } from "tailwindcss"
+Trang hiển thị danh sách sản phẩm theo danh mục, hỗ trợ phân trang và sắp xếp.
 
-const config = {
-  darkMode: ["class"],
-  content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-    "*.{js,ts,jsx,tsx,mdx}",
-  ],
-  prefix: "",
-  theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
-    extend: {
-      colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        orange: {
-          500: "#ee4d2d",
-          100: "#fff1ee",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-      keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
-} satisfies Config
+```javascript
+// src/pages/CategoryProducts.js
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import styled from 'styled-components';
+import { FaHome, FaAngleRight } from 'react-icons/fa';
+import MainLayout from '../layouts/MainLayout';
+import CategoryProductItem from '../components/category/CategoryProductItem/CategoryProductItem';
+import Pagination from '../components/common/Pagination/Pagination';
+import CategorySidebar from '../components/category/CategorySidebar/CategorySidebar';
+import productService from '../services/productService';
 
-export default config
+const PageContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+`;
+
+const BreadcrumbNav = styled.nav`
+  margin-bottom: 20px;
+  
+  ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    
+    li {
+      display: flex;
+      align-items: center;
+      
+      &:not(:last-child)::after {
+        content: '';
+        margin: 0 8px;
+        display: flex;
+        align-items: center;
+      }
+      
+      a {
+        color: #666;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        
+        &:hover {
+          color: #4CAF50;
+        }
+      }
+      
+      &:last-child a {
+        color: #333;
+        font-weight: 500;
+        pointer-events: none;
+      }
+    }
+  }
+`;
+
+const ContentContainer = styled.div`
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const MainContent = styled.div`
+  animation: fadeIn 0.5s ease;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+`;
+
+const CategoryHeader = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+`;
+
+const CategoryTitle = styled.h1`
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #333;
+`;
+
+const CategoryDescription = styled.p`
+  color: #666;
+  line-height: 1.6;
+  margin: 0;
+`;
+
+const ProductsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px 20px;
+  margin-bottom: 20px;
+`;
+
+const ProductCount = styled.div`
+  color: #666;
+  font-size: 14px;
+`;
+
+const SortSelector = styled.select`
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: #4CAF50;
+  }
+`;
+
+const ProductGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+`;
+
+const NoProducts = styled.div`
+  text-align: center;
+  padding: 50px 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+  h3 {
+    margin: 0 0 10px;
+    color: #333;
+  }
+  
+  p {
+    color: #666;
+    margin: 0;
+  }
+`;
+
+const LoadingSpinner = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 50px 0;
+  color: #4CAF50;
+  font-size: 18px;
+`;
+
+const CategoryProducts = () => {
+  const { id } = useParams();
+  const [category, setCategory] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState({
+    sort: 'newest',
+    minPrice: undefined,
+    maxPrice: undefined
+  });
+  
+  useEffect(() => {
+    const fetchCategoryData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch category details
+        const categoryData = await productService.getCategoryById(id);
+        setCategory(categoryData);
+        
+        // Fetch products for this category with filters
+        const productData = await productService.getProductsByCategory(id, {
+          page: currentPage,
+          limit: 8,
+          sort: filters.sort,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice
+        });
+        
+        setProducts(productData.products);
+        setTotalPages(productData.totalPages);
+      } catch (error) {
+        console.error('Failed to fetch category data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCategoryData();
+  }, [id, currentPage, filters]);
+  
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo(0, 0);
+  };
+  
+  const handleSortChange = (e) => {
+    setFilters({
+      ...filters,
+      sort: e.target.value
+    });
+    setCurrentPage(1);
+  };
+  
+  const handleFilterChange = (newFilters) => {
+    setFilters({
+      ...filters,
+      ...newFilters
+    });
+    setCurrentPage(1);
+  };
+  
+  return (
+    <MainLayout>
+      <PageContainer>
+        <BreadcrumbNav>
+          <ul>
+            <li>
+              <Link to="/">
+                <FaHome /> Trang chủ
+              </Link>
+              <FaAngleRight />
+            </li>
+            <li>
+              <Link to="/categories">
+                Các loại thực phẩm
+              </Link>
+              <FaAngleRight />
+            </li>
+            <li>
+              <Link to={`/categories/${id}`}>
+                {category?.name || 'Danh mục sản phẩm'}
+              </Link>
+            </li>
+          </ul>
+        </BreadcrumbNav>
+        
+        <ContentContainer>
+          <CategorySidebar onFilterChange={handleFilterChange} />
+          
+          <MainContent>
+            {loading && !category ? (
+              <LoadingSpinner>
+                Đang tải danh mục sản phẩm...
+              </LoadingSpinner>
+            ) : (
+              <>
+                <CategoryHeader>
+                  <CategoryTitle>{category?.name}</CategoryTitle>
+                  <CategoryDescription>{category?.description}</CategoryDescription>
+                </CategoryHeader>
+                
+                <ProductsHeader>
+                  <ProductCount>
+                    {products?.length > 0 
+                      ? `Hiển thị ${products.length} sản phẩm`
+                      : 'Không có sản phẩm nào'
+                    }
+                  </ProductCount>
+                  
+                  <SortSelector value={filters.sort} onChange={handleSortChange}>
+                    <option value="newest">Mới nhất</option>
+                    <option value="price-asc">Giá: Thấp đến cao</option>
+                    <option value="price-desc">Giá: Cao đến thấp</option>
+                    <option value="rating">Đánh giá cao nhất</option>
+                  </SortSelector>
+                </ProductsHeader>
+                
+                {loading ? (
+                  <LoadingSpinner>
+                    Đang tải sản phẩm...
+                  </LoadingSpinner>
+                ) : products.length > 0 ? (
+                  <>
+                    <ProductGrid>
+                      {products.map(product => (
+                        <CategoryProductItem 
+                          key={product.id} 
+                          product={product}
+                        />
+                      ))}
+                    </ProductGrid>
+                    
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                    />
+                  </>
+                ) : (
+                  <NoProducts>
+                    <h3>Không tìm thấy sản phẩm</h3>
+                    <p>Vui lòng thử lại với bộ lọc khác hoặc xem các danh mục khác.</p>
+                  </NoProducts>
+                )}
+              </>
+            )}
+          </MainContent>
+        </ContentContainer>
+      </PageContainer>
+    </MainLayout>
+  );
+};
+
+export default CategoryProducts;
 ```
 
-## Cấu trúc giao diện
+## 3. Item Sản Phẩm Trong Danh Mục
 
-Giao diện hệ thống quản lý đơn hàng bao gồm các thành phần chính sau:
+Component hiển thị thông tin sản phẩm với các tùy chọn thêm vào giỏ hàng, wishlist.
 
-1. **Header** - Hiển thị thông tin người dùng và avatar
-2. **Sidebar** - Menu điều hướng với các chức năng quản lý tài khoản, đơn hàng, voucher
-3. **Tabs** - Điều hướng giữa các trạng thái đơn hàng
-4. **Search** - Tìm kiếm đơn hàng
-5. **Order List** - Danh sách đơn hàng với thông tin chi tiết
-6. **Chat Button** - Nút chat cố định góc dưới màn hình
+```javascript
+// src/components/category/CategoryProductItem/CategoryProductItem.js
+import React, { useContext, useState } from 'react';
+import { Link } from 'react-router-dom';
+import styled from 'styled-components';
+import { FaStar, FaShoppingCart, FaHeart, FaEye } from 'react-icons/fa';
+import { CartContext } from '../../../context/CartContext';
 
-## Chức năng
+const Card = styled.div`
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  position: relative;
+  transition: all 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  
+  &:hover {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-5px);
+    
+    .quick-actions {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .image-container img {
+      transform: scale(1.05);
+    }
+  }
+`;
 
-- Xem và lọc đơn hàng theo trạng thái
-- Tìm kiếm đơn hàng 
-- Quản lý trạng thái đơn hàng (Đã nhận, Trả hàng, v.v.)
-- Liên hệ với người bán
-- Truy cập thông tin shop
+const ImageContainer = styled.div`
+  position: relative;
+  overflow: hidden;
+  height: 200px;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+`;
 
+const DiscountBadge = styled.div`
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: #FF8C00;
+  color: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 2;
+`;
+
+const QuickActions = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  transform: translateY(100%);
+  transition: all 0.3s ease;
+  z-index: 2;
+`;
+
+const ActionButton = styled.button`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: white;
+  border: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
+`;
+
+const Title = styled.h3`
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  
+  a {
+    color: inherit;
+    text-decoration: none;
+    
+    &:hover {
+      color: #4CAF50;
+    }
+  }
+`;
+
+const Rating = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  
+  svg {
+    color: #FFD700;
+    margin-right: 2px;
+    font-size: 14px;
+  }
+  
+  span {
+    color: #666;
+    font-size: 14px;
+    margin-left: 5px;
+  }
+`;
+
+const Price = styled.div`
+  display: flex;
+  align-items: center;
+  margin-top: auto;
+  
+  .current {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .original {
+    margin-left: 10px;
+    font-size: 14px;
+    color: #999;
+    text-decoration: line-through;
+  }
+`;
+
+const AddToCartButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  margin-top: 15px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s;
+  
+  svg {
+    margin-right: 8px;
+  }
+  
+  &:hover {
+    background-color: #388E3C;
+  }
+  
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+`;
+
+const CategoryProductItem = ({ product }) => {
+  const { addToCart } = useContext(CartContext);
+  const [inWishlist, setInWishlist] = useState(false);
+  
+  const handleAddToCart = () => {
+    addToCart(product, 1);
+  };
+  
+  const toggleWishlist = () => {
+    setInWishlist(!inWishlist);
+    // Here you would implement actual wishlist functionality
+  };
+  
+  const discountPercentage = product.discountPrice 
+    ? Math.round(((product.originalPrice - product.discountPrice) / product.originalPrice) * 100) 
+    : 0;
+  
+  return (
+    <Card>
+      <ImageContainer className="image-container">
+        <Link to={`/products/${product.id}`}>
+          <img src={product.images[0]} alt={product.name} />
+        </Link>
+        
+        {discountPercentage > 0 && (
+          <DiscountBadge>{discountPercentage}% OFF</DiscountBadge>
+        )}
+        
+        <QuickActions className="quick-actions">
+          <WishlistButton 
+            className={inWishlist ? 'active' : ''} 
+            onClick={toggleWishlist} 
+            aria-label="Add to wishlist"
+          >
+            <FaHeart />
+          </WishlistButton>
+          
+          <ActionButton as={Link} to={`/products/${product.id}`} aria-label="View product">
+            <FaEye />
+          </ActionButton>
+        </QuickActions>
+      </ImageContainer>
+      
+      <Content>
+        <Title>
+          <Link to={`/products/${product.id}`}>{product.name}</Link>
+        </Title>
+        
+        <Rating>
+          {[...Array(5)].map((_, i) => (
+            <FaStar key={i} color={i < Math.floor(product.rating) ? "#FFD700" : "#e4e5e9"} />
+          ))}
+          <span>({product.reviewCount})</span>
+        </Rating>
+        
+        <Price>
+          <span className="current">{product.discountPrice || product.originalPrice}đ</span>
+          {product.discountPrice && (
+            <span className="original">{product.originalPrice}đ</span>
+          )}
+        </Price>
+        
+        <AddToCartButton 
+          onClick={handleAddToCart} 
+          disabled={!product.inStock}
+        >
+          <FaShoppingCart /> Thêm vào giỏ hàng
+        </AddToCartButton>
+      </Content>
+    </Card>
+  );
+};
+
+export default CategoryProductItem;
+
+// src/pages/CategoryProducts.js
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import styled from 'styled-components';
+import { FaHome, FaAngleRight } from 'react-icons/fa';
+import MainLayout from '../layouts/MainLayout';
+import CategoryProductItem from '../components/category/CategoryProductItem/CategoryProductItem';
+import Pagination from '../components/common/Pagination/Pagination';
+import CategorySidebar from '../components/category/CategorySidebar/CategorySidebar';
+import productService from '../services/productService';
+
+const PageContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+`;
+
+const BreadcrumbNav = styled.nav`
+  margin-bottom: 20px;
+  
+  ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    
+    li {
+      display: flex;
+      align-items: center;
+      
+      &:not(:last-child)::after {
+        content: '';
+        margin: 0 8px;
+        display: flex;
+        align-items: center;
+      }
+      
+      a {
+        color: #666;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        
+        &:hover {
+          color: #4CAF50;
+        }
+      }
+      
+      &:last-child a {
+        color: #333;
+        font-weight: 500;
+        pointer-events: none;
+      }
+    }
+  }
+`;
+
+const ContentContainer = styled.div`
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const MainContent = styled.div`
+  animation: fadeIn 0.5s ease;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+`;
+
+const CategoryHeader = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+`;
+
+const CategoryTitle = styled.h1`
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #333;
+`;
+
+const CategoryDescription = styled.p`
+  color: #666;
+  line-height: 1.6;
+  margin: 0;
+`;
+
+const ProductsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px 20px;
+  margin-bottom: 20px;
+`;
+
+const ProductCount = styled.div`
+  color: #666;
+  font-size: 14px;
+`;
+
+const SortSelector = styled.select`
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: #4CAF50;
+  }
+`;
+
+const ProductGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+`;
+
+const NoProducts = styled.div`
+  text-align: center;
+  padding: 50px 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+  h3 {
+    margin: 0 0 10px;
+    color: #333;
+  }
+  
+  p {
+    color: #666;
+    margin: 0;
+  }
+`;
+
+const LoadingSpinner = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 50px 0;
+  color: #4CAF50;
+  font-size: 18px;
+`;
+
+const CategoryProducts = () => {
+  const { id } = useParams();
+  const [category, setCategory] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState({
+    sort: 'newest',
+    minPrice: undefined,
+    maxPrice: undefined
+  });
+  
+  useEffect(() => {
+    const fetchCategoryData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch category details
+        const categoryData = await productService.getCategoryById(id);
+        setCategory(categoryData);
+        
+        // Fetch products for this category with filters
+        const productData = await productService.getProductsByCategory(id, {
+          page: currentPage,
+          limit: 8,
+          sort: filters.sort,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice
+        });
+        
+        setProducts(productData.products);
+        setTotalPages(productData.totalPages);
+      } catch (error) {
+        console.error('Failed to fetch category data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCategoryData();
+  }, [id, currentPage, filters]);
+  
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo(0, 0);
+  };
+  
+  const handleSortChange = (e) => {
+    setFilters({
+      ...filters,
+      sort: e.target.value
+    });
+    setCurrentPage(1);
+  };
+  
+  const handleFilterChange = (newFilters) => {
+    setFilters({
+      ...filters,
+      ...newFilters
+    });
+    setCurrentPage(1);
+  };
+  
+  return (
+    <MainLayout>
+      <PageContainer>
+        <BreadcrumbNav>
+          <ul>
+            <li>
+              <Link to="/">
+                <FaHome /> Trang chủ
+              </Link>
+              <FaAngleRight />
+            </li>
+            <li>
+              <Link to="/categories">
+                Các loại thực phẩm
+              </Link>
+              <FaAngleRight />
+            </li>
+            <li>
+              <Link to={`/categories/${id}`}>
+                {category?.name || 'Danh mục sản phẩm'}
+              </Link>
+            </li>
+          </ul>
+        </BreadcrumbNav>
+        
+        <ContentContainer>
+          <CategorySidebar onFilterChange={handleFilterChange} />
+          
+          <MainContent>
+            {loading && !category ? (
+              <LoadingSpinner>
+                Đang tải danh mục sản phẩm...
+              </LoadingSpinner>
+            ) : (
+              <>
+                <CategoryHeader>
+                  <CategoryTitle>{category?.name}</CategoryTitle>
+                  <CategoryDescription>{category?.description}</CategoryDescription>
+                </CategoryHeader>
+                
+                <ProductsHeader>
+                  <ProductCount>
+                    {products?.length > 0 
+                      ? `Hiển thị ${products.length} sản phẩm`
+                      : 'Không có sản phẩm nào'
+                    }
+                  </ProductCount>
+                  
+                  <SortSelector value={filters.sort} onChange={handleSortChange}>
+                    <option value="newest">Mới nhất</option>
+                    <option value="price-asc">Giá: Thấp đến cao</option>
+                    <option value="price-desc">Giá: Cao đến thấp</option>
+                    <option value="rating">Đánh giá cao nhất</option>
+                  </SortSelector>
+                </ProductsHeader>
+                
+                {loading ? (
+                  <LoadingSpinner>
+                    Đang tải sản phẩm...
+                  </LoadingSpinner>
+                ) : products.length > 0 ? (
+                  <>
+                    <ProductGrid>
+                      {products.map(product => (
+                        <CategoryProductItem 
+                          key={product.id} 
+                          product={product}
+                        />
+                      ))}
+                    </ProductGrid>
+                    
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                    />
+                  </>
+                ) : (
+                  <NoProducts>
+                    <h3>Không tìm thấy sản phẩm</h3>
+                    <p>Vui lòng thử lại với bộ lọc khác hoặc xem các danh mục khác.</p>
+                  </NoProducts>
+                )}
+              </>
+            )}
+          </MainContent>
+        </ContentContainer>
+      </PageContainer>
+    </MainLayout>
+  );
+};
+
+export default CategoryProducts;
+
+// src/pages/CategoryProducts.js
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import styled from 'styled-components';
+import { FaHome, FaAngleRight } from 'react-icons/fa';
+import MainLayout from '../layouts/MainLayout';
+import CategoryProductItem from '../components/category/CategoryProductItem/CategoryProductItem';
+import Pagination from '../components/common/Pagination/Pagination';
+import CategorySidebar from '../components/category/CategorySidebar/CategorySidebar';
+import productService from '../services/productService';
+
+const PageContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+`;
+
+const BreadcrumbNav = styled.nav`
+  margin-bottom: 20px;
+  
+  ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    
+    li {
+      display: flex;
+      align-items: center;
+      
+      &:not(:last-child)::after {
+        content: '';
+        margin: 0 8px;
+        display: flex;
+        align-items: center;
+      }
+      
+      a {
+        color: #666;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        
+        &:hover {
+          color: #4CAF50;
+        }
+      }
+      
+      &:last-child a {
+        color: #333;
+        font-weight: 500;
+        pointer-events: none;
+      }
+    }
+  }
+`;
+
+const ContentContainer = styled.div`
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const MainContent = styled.div`
+  animation: fadeIn 0.5s ease;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+`;
+
+const CategoryHeader = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+`;
+
+const CategoryTitle = styled.h1`
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #333;
+`;
+
+const CategoryDescription = styled.p`
+  color: #666;
+  line-height: 1.6;
+  margin: 0;
+`;
+
+const ProductsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px 20px;
+  margin-bottom: 20px;
+`;
+
+const ProductCount = styled.div`
+  color: #666;
+  font-size: 14px;
+`;
+
+const SortSelector = styled.select`
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: #4CAF50;
+  }
+`;
+
+const ProductGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+`;
+
+const NoProducts = styled.div`
+  text-align: center;
+  padding: 50px 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+  h3 {
+    margin: 0 0 10px;
+    color: #333;
+  }
+  
+  p {
+    color: #666;
+    margin: 0;
+  }
+`;
+
+const LoadingSpinner = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 50px 0;
+  color: #4CAF50;
+  font-size: 18px;
+`;
+
+const CategoryProducts = () => {
+  const { id } = useParams();
+  const [category, setCategory] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState({
+    sort: 'newest',
+    minPrice: undefined,
+    maxPrice: undefined
+  });
+  
+  useEffect(() => {
+    const fetchCategoryData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch category details
+        const categoryData = await productService.getCategoryById(id);
+        setCategory(categoryData);
+        
+        // Fetch products for this category with filters
+        const productData = await productService.getProductsByCategory(id, {
+          page: currentPage,
+          limit: 8,
+          sort: filters.sort,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice
+        });
+        
+        setProducts(productData.products);
+        setTotalPages(productData.totalPages);
+      } catch (error) {
+        console.error('Failed to fetch category data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCategoryData();
+  }, [id, currentPage, filters]);
+  
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo(0, 0);
+  };
+  
+  const handleSortChange = (e) => {
+    setFilters({
+      ...filters,
+      sort: e.target.value
+    });
+    setCurrentPage(1);
+  };
+  
+  const handleFilterChange = (newFilters) => {
+    setFilters({
+      ...filters,
+      ...newFilters
+    });
+    setCurrentPage(1);
+  };
+  
+  return (
+    <MainLayout>
+      <PageContainer>
+        <BreadcrumbNav>
+          <ul>
+            <li>
+              <Link to="/">
+                <FaHome /> Trang chủ
+              </Link>
+              <FaAngleRight />
+            </li>
+            <li>
+              <Link to="/categories">
+                Các loại thực phẩm
+              </Link>
+              <FaAngleRight />
+            </li>
+            <li>
+              <Link to={`/categories/${id}`}>
+                {category?.name || 'Danh mục sản phẩm'}
+              </Link>
+            </li>
+          </ul>
+        </BreadcrumbNav>
+        
+        <ContentContainer>
+          <CategorySidebar onFilterChange={handleFilterChange} />
+          
+          <MainContent>
+            {loading && !category ? (
+              <LoadingSpinner>
+                Đang tải danh mục sản phẩm...
+              </LoadingSpinner>
+            ) : (
+              <>
+                <CategoryHeader>
+                  <CategoryTitle>{category?.name}</CategoryTitle>
+                  <CategoryDescription>{category?.description}</CategoryDescription>
+                </CategoryHeader>
+                
+                <ProductsHeader>
+                  <ProductCount>
+                    {products?.length > 0 
+                      ? `Hiển thị ${products.length} sản phẩm`
+                      : 'Không có sản phẩm nào'
+                    }
+                  </ProductCount>
+                  
+                  <SortSelector value={filters.sort} onChange={handleSortChange}>
+                    <option value="newest">Mới nhất</option>
+                    <option value="price-asc">Giá: Thấp đến cao</option>
+                    <option value="price-desc">Giá: Cao đến thấp</option>
+                    <option value="rating">Đánh giá cao nhất</option>
+                  </SortSelector>
+                </ProductsHeader>
+                
+                {loading ? (
+                  <LoadingSpinner>
+                    Đang tải sản phẩm...
+                  </LoadingSpinner>
+                ) : products.length > 0 ? (
+                  <>
+                    <ProductGrid>
+                      {products.map(product => (
+                        <CategoryProductItem 
+                          key={product.id} 
+                          product={product}
+                        />
+                      ))}
+                    </ProductGrid>
+                    
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                    />
+                  </>
+                ) : (
+                  <NoProducts>
+                    <h3>Không tìm thấy sản phẩm</h3>
+                    <p>Vui lòng thử lại với bộ lọc khác hoặc xem các danh mục khác.</p>
+                  </NoProducts>
+                )}
+              </>
+            )}
+          </MainContent>
+        </ContentContainer>
+      </PageContainer>
+    </MainLayout>
+  );
+};
+
+export default CategoryProducts;
+
+// Update these routes in src/App.js
+
+// Find the routes section and update/add these routes:
+
+{/* Public Routes */}
+<Route path="/" element={<Home />} />
+<Route path="/products/:id" element={<ProductDetail />} />
+<Route path="/categories" element={<CategoryList />} />
+<Route path="/categories/:id" element={<CategoryProducts />} />
+<Route path="/categories/:id/:subCategory" element={<CategoryProducts />} />
+<Route path="/search" element={<SearchResults />} />
+<Route path="/cart" element={<Cart />} />

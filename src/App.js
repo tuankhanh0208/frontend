@@ -24,6 +24,7 @@ import AdminRoute from './routes/AdminRoute';
 import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import CategoryProducts from './pages/CategoryProducts';
+import CategoryList from './pages/CategoryList';
 import SearchResults from './pages/SearchResults';
 import Cart from './pages/cart/Cart';
 import Checkout from './pages/cart/Checkout';
@@ -31,6 +32,7 @@ import PaymentSuccess from './pages/cart/PaymentSuccess';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Profile from './pages/user/Profile';
 import Orders from './pages/user/Orders';
 import OrderDetail from './pages/user/OrderDetail';
@@ -41,6 +43,7 @@ import AdminProducts from './pages/admin/ProductList';
 import AdminOrders from './pages/admin/OrderList';
 import AdminCategories from './pages/admin/CategoryList';
 import NotFound from './pages/NotFound';
+import './App.css';
 
 const App = () => {
   return (
@@ -53,8 +56,10 @@ const App = () => {
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
-                <Route path="/products/:id" element={<ProductDetail />} />
+                <Route path="/categories" element={<CategoryList />} />
                 <Route path="/categories/:id" element={<CategoryProducts />} />
+                <Route path="/categories/:id/:slug" element={<CategoryProducts />} />
+                <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/search" element={<SearchResults />} />
                 <Route path="/cart" element={<Cart />} />
                 

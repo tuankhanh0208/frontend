@@ -12,10 +12,68 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const user = await authService.getCurrentUser();
-        setCurrentUser(user);
+        console.log('Initializing authentication state...');
+        // Sử dụng tokenUtils.getTokens() để lấy token từ cookie
+        const { accessToken, tokenExpiry } = authService.tokenUtils.getTokens();
+        console.log('Token found in cookies:', !!accessToken);
+        
+        if (accessToken) {
+          // Kiểm tra token có hợp lệ không
+          if (!authService.tokenUtils.validateToken(accessToken)) {
+            console.error('Invalid token format');
+            // Không xóa token khi refresh trang, chỉ đánh dấu là không xác thực
+            setLoading(false);
+            return;
+          }
+          
+          // Kiểm tra token có hết hạn không
+          if (authService.tokenUtils.isTokenExpired(tokenExpiry)) {
+            console.log('Token expired, attempting to refresh');
+            // Thử refresh token thay vì xóa ngay lập tức
+            try {
+              const refreshed = await authService.refreshToken();
+              if (!refreshed) {
+                console.log('Token refresh failed, but keeping token for now');
+              }
+            } catch (error) {
+              console.error('Token refresh error:', error);
+            }
+            setLoading(false);
+            return;
+          }
+          
+          // Lấy thông tin user từ API
+          const user = await authService.getCurrentUser();
+          if (user) {
+            setCurrentUser(user);
+            console.log('Restored user session:', user);
+          } else {
+            // Nếu không lấy được thông tin user, thử giải mã token để lấy thông tin cơ bản
+            try {
+              const decodedToken = authService.tokenUtils.decodeToken(accessToken);
+              if (decodedToken && decodedToken.user_id) {
+                // Tạo user object từ thông tin trong token
+                const basicUser = {
+                  id: decodedToken.user_id,
+                  username: decodedToken.username || 'User',
+                  role: decodedToken.role || 'user'
+                };
+                setCurrentUser(basicUser);
+                console.log('Created basic user from token:', basicUser);
+              } else {
+                console.log('Could not extract user info from token');
+              }
+            } catch (error) {
+              console.error('Failed to decode token:', error);
+            }
+          }
+        } else {
+          console.log('No token found, user is not authenticated');
+        }
       } catch (error) {
-        console.error('Failed to get current user:', error);
+        console.error('Auth initialization error:', error);
+        // Không xóa token khi có lỗi xảy ra, chỉ ghi log lỗi
+        // Giữ token để người dùng có thể thử lại sau
       } finally {
         setLoading(false);
       }
@@ -23,11 +81,13 @@ export const AuthProvider = ({ children }) => {
 
     initAuth();
   }, []);
+  
+  // Thêm console.log để debug quá trình đăng nhập
 
-  const login = async (email, password) => {
+  const login = async (username, password) => {
     setError(null);
     try {
-      const user = await authService.login(email, password);
+      const user = await authService.login(username, password);
       setCurrentUser(user);
       return user;
     } catch (error) {
@@ -36,10 +96,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, phone, password) => {
+  const register = async (username, name, email, phone, password) => {
     setError(null);
     try {
-      const user = await authService.register(name, email, phone, password);
+      const user = await authService.register(username, name, email, phone, password);
       return user;
     } catch (error) {
       setError(error.message || 'Registration failed');

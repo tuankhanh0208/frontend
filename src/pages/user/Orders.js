@@ -1,22 +1,35 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaShoppingBag, FaEye, FaFileDownload } from 'react-icons/fa';
+import { FaShoppingBag, FaSearch, FaFilter } from 'react-icons/fa';
 import MainLayout from '../../layouts/MainLayout';
 import Button from '../../components/common/Button/Button';
-import Pagination from '../../components/common/Pagination/Pagination';
 import { AuthContext } from '../../context/AuthContext';
 import orderService from '../../services/orderService';
+import OrderList from '../../components/order-management/OrderList/OrderList';
 
 const OrdersContainer = styled.div`
   max-width: 1000px;
   margin: 0 auto;
   padding: 30px;
+  animation: fadeIn 0.5s ease-in-out;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 `;
 
 const OrdersTitle = styled.h1`
   font-size: 28px;
   margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  
+  svg {
+    margin-right: 12px;
+    color: #4CAF50;
+  }
 `;
 
 const CardContainer = styled.div`
@@ -25,6 +38,11 @@ const CardContainer = styled.div`
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   margin-bottom: 30px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  }
 `;
 
 const CardHeader = styled.div`
@@ -49,68 +67,68 @@ const CardBody = styled.div`
   padding: 20px;
 `;
 
-const OrdersTable = styled.div`
-  width: 100%;
-  overflow-x: auto;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
+const SearchFilterContainer = styled.div`
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
   
-  th, td {
-    padding: 15px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-  }
-  
-  th {
-    background-color: #f9f9f9;
-    font-weight: 600;
-  }
-  
-  tr:last-child td {
-    border-bottom: none;
+  @media (max-width: 768px) {
+    flex-direction: column;
   }
 `;
 
-const StatusBadge = styled.span`
-  display: inline-block;
-  padding: 5px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+const SearchInput = styled.div`
+  flex: 1;
+  position: relative;
   
-  ${props => {
-    if (props.status === 'completed') {
-      return `
-        background-color: rgba(76, 175, 80, 0.1);
-        color: #4CAF50;
-      `;
-    } else if (props.status === 'processing') {
-      return `
-        background-color: rgba(33, 150, 243, 0.1);
-        color: #2196F3;
-      `;
-    } else if (props.status === 'cancelled') {
-      return `
-        background-color: rgba(244, 67, 54, 0.1);
-        color: #F44336;
-      `;
-    } else {
-      return `
-        background-color: rgba(255, 152, 0, 0.1);
-        color: #FF9800;
-      `;
+  input {
+    width: 100%;
+    padding: 10px 15px 10px 40px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    
+    &:focus {
+      outline: none;
+      border-color: #4CAF50;
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
     }
-  }}
+  }
+  
+  svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+  }
 `;
 
-const ActionButton = styled(Button)`
-  margin-right: 8px;
+const FilterDropdown = styled.select`
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  min-width: 150px;
+  cursor: pointer;
+  transition: all 0.3s ease;
   
-  &:last-child {
-    margin-right: 0;
+  &:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+  }
+`;
+
+const FilterContainer = styled.div`
+  display: flex;
+  align-items: center;
+  
+  svg {
+    margin-right: 8px;
+    color: #666;
   }
 `;
 
@@ -142,6 +160,8 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   
   useEffect(() => {
     const fetchOrders = async () => {
@@ -149,7 +169,9 @@ const Orders = () => {
         setLoading(true);
         const response = await orderService.getUserOrders({
           page: currentPage,
-          limit: 10
+          limit: 10,
+          search: searchTerm,
+          status: statusFilter !== 'all' ? statusFilter : undefined
         });
         
         setOrders(response.orders);
@@ -164,110 +186,69 @@ const Orders = () => {
     if (currentUser) {
       fetchOrders();
     }
-  }, [currentUser, currentPage]);
+  }, [currentUser, currentPage, searchTerm, statusFilter]);
   
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
   
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'processing':
-        return 'Processing';
-      case 'shipped':
-        return 'Shipped';
-      case 'delivered':
-        return 'Delivered';
-      case 'completed':
-        return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
+  const handleSearch = (e) => {
+    if (e.key === 'Enter') {
+      setCurrentPage(1);
+      setSearchTerm(e.target.value);
     }
+  };
+  
+  const handleStatusFilterChange = (e) => {
+    setCurrentPage(1);
+    setStatusFilter(e.target.value);
   };
   
   return (
     <MainLayout>
       <OrdersContainer>
-        <OrdersTitle>My Orders</OrdersTitle>
+        <OrdersTitle>
+          <FaShoppingBag />
+          Đơn hàng của tôi
+        </OrdersTitle>
         
         <CardContainer>
           <CardHeader>
-            <h2><FaShoppingBag /> Order History</h2>
+            <h2><FaShoppingBag /> Lịch sử đơn hàng</h2>
           </CardHeader>
           <CardBody>
-            {loading ? (
-              <p>Loading orders...</p>
-            ) : orders.length > 0 ? (
-              <>
-                <OrdersTable>
-                  <Table>
-                    <thead>
-                      <tr>
-                        <th>Order #</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Total</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.map(order => (
-                        <tr key={order.id}>
-                          <td>#{order.orderNumber}</td>
-                          <td>{new Date(order.createdAt).toLocaleDateString()}</td>
-                          <td>
-                            <StatusBadge status={order.status.toLowerCase()}>
-                              {getStatusText(order.status)}
-                            </StatusBadge>
-                          </td>
-                          <td>{order.total}đ</td>
-                          <td>
-                            <ActionButton
-                              as={Link}
-                              to={`/orders/${order.id}`}
-                              variant="outline"
-                              size="small"
-                            >
-                              <FaEye /> View
-                            </ActionButton>
-                            <ActionButton
-                              variant="text"
-                              size="small"
-                              onClick={() => {/* Download invoice logic */}}
-                            >
-                              <FaFileDownload /> Invoice
-                            </ActionButton>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </OrdersTable>
-                
-                <Pagination 
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
+            <SearchFilterContainer>
+              <SearchInput>
+                <FaSearch />
+                <input 
+                  type="text" 
+                  placeholder="Tìm kiếm theo mã đơn hàng hoặc sản phẩm" 
+                  onKeyDown={handleSearch}
                 />
-              </>
-            ) : (
-              <EmptyOrders>
-                <FaShoppingBag />
-                <h3>No orders found</h3>
-                <p>You haven't placed any orders yet.</p>
-                <Button
-                  as={Link}
-                  to="/"
-                  variant="primary"
-                >
-                  Start Shopping
-                </Button>
-              </EmptyOrders>
-            )}
+              </SearchInput>
+              
+              <FilterContainer>
+                <FaFilter />
+                <FilterDropdown value={statusFilter} onChange={handleStatusFilterChange}>
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="pending">Chờ xác nhận</option>
+                  <option value="processing">Đang xử lý</option>
+                  <option value="shipped">Đang giao</option>
+                  <option value="delivered">Đã giao</option>
+                  <option value="completed">Hoàn thành</option>
+                  <option value="cancelled">Đã hủy</option>
+                </FilterDropdown>
+              </FilterContainer>
+            </SearchFilterContainer>
+            
+            <OrderList 
+              orders={orders}
+              loading={loading}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              emptyIcon={<FaShoppingBag />}
+            />
           </CardBody>
         </CardContainer>
       </OrdersContainer>

@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import { FaShoppingCart, FaSearch, FaUser, FaPhoneAlt } from 'react-icons/fa';
 import { CartContext } from '../../../context/CartContext';
 import { AuthContext } from '../../../context/AuthContext';
+import UserDropdown from '../UserDropdown/UserDropdown';
 import logo from '../../../assets/images/logo.png';
 
 const HeaderContainer = styled.header`
@@ -121,7 +122,7 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const { cart } = useContext(CartContext);
-  const { isAuthenticated } = useContext(AuthContext);
+  const { currentUser, isAuthenticated } = useContext(AuthContext);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -154,10 +155,14 @@ const Header = () => {
           <span>(+91) 111-111-1111</span>
         </ContactInfo>
         <ActionItems>
-          <ActionButton to={isAuthenticated ? "/account" : "/login"}>
-            <FaUser />
-            {isAuthenticated ? "Tài khoản" : "Login/Register"}
-          </ActionButton>
+          {isAuthenticated ? (
+            <UserDropdown />
+          ) : (
+            <ActionButton to="/login">
+              <FaUser />
+              Login/Register
+            </ActionButton>
+          )}
           <ActionButton to="/cart">
             <FaShoppingCart />
             Giỏ hàng

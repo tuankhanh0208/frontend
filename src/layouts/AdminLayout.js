@@ -230,7 +230,6 @@ const AdminLayout = ({ children, title }) => {
             <MenuToggle onClick={toggleSidebar}>
               <FaBars />
             </MenuToggle>
-            <PageTitle>{title}</PageTitle>
           </div>
           <UserInfo>
             <span>Welcome, {currentUser?.name || 'Admin'}</span>

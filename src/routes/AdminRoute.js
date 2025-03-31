@@ -10,12 +10,12 @@ const AdminRoute = ({ children }) => {
     return <div>Loading...</div>; // Or a proper loading component
   }
   
-  if (!currentUser || !currentUser.isAdmin) {
+  if (!currentUser || currentUser.role !== 'admin') {
     // Redirect unauthorized users to home
     return <Navigate to="/" replace />;
   }
   
-  return children;
+  return <AdminLayout>{children}</AdminLayout>;
 };
 
 export default AdminRoute;

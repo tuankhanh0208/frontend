@@ -3,6 +3,8 @@ import React from 'react';
 import styled from 'styled-components';
 import Header from '../components/common/Header/Header';
 import Footer from '../components/common/Footer/Footer';
+import ChatButton from '../components/chat/ChatButton/ChatButton';
+import ChatWindow from '../components/chat/ChatWindow/ChatWindow';
 
 const MainContainer = styled.div`
   display: flex;
@@ -24,6 +26,8 @@ const MainLayout = ({ children }) => {
       <Header />
       <Content>{children}</Content>
       <Footer />
+      <ChatButton />
+      <ChatWindow />
     </MainContainer>
   );
 };

@@ -1,63 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaArrowLeft, FaTruck, FaFileDownload, FaTimesCircle } from 'react-icons/fa';
+import { FaArrowLeft, FaBox, FaMapMarkerAlt, FaTruck, FaFileInvoice, FaDownload } from 'react-icons/fa';
 import MainLayout from '../../layouts/MainLayout';
 import Button from '../../components/common/Button/Button';
 import orderService from '../../services/orderService';
+import OrderStatus from '../../components/order-management/OrderStatus/OrderStatus';
+import OrderProductItem from '../../components/order-management/OrderProductItem/OrderProductItem';
+import OrderSummary from '../../components/order-management/OrderSummary/OrderSummary';
 
 const OrderDetailContainer = styled.div`
   max-width: 1000px;
   margin: 0 auto;
   padding: 30px;
-`;
-
-const BackLink = styled(Link)`
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-  color: #4CAF50;
-  text-decoration: none;
-  font-weight: 500;
+  animation: fadeIn 0.5s ease-in-out;
   
-  svg {
-    margin-right: 8px;
-  }
-  
-  &:hover {
-    text-decoration: underline;
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 `;
 
-const OrderHeader = styled.div`
+const OrderDetailHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
   
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-    
-    div:last-child {
-      margin-top: 20px;
-    }
+  h1 {
+    margin: 0;
+    font-size: 24px;
   }
 `;
 
-const OrderTitle = styled.h1`
-  font-size: 24px;
-  margin: 0;
-`;
-
-const OrderNumber = styled.span`
-  font-weight: normal;
-  color: #666;
-`;
-
-const ActionButtons = styled.div`
+const BackButton = styled(Link)`
   display: flex;
-  gap: 10px;
+  align-items: center;
+  color: #4CAF50;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  
+  svg {
+    margin-right: 8px;
+    transition: transform 0.2s ease;
+  }
+  
+  &:hover {
+    text-decoration: underline;
+    
+    svg {
+      transform: translateX(-3px);
+    }
+  }
 `;
 
 const CardContainer = styled.div`
@@ -66,6 +61,11 @@ const CardContainer = styled.div`
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   margin-bottom: 30px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  }
 `;
 
 const CardHeader = styled.div`
@@ -92,12 +92,16 @@ const CardBody = styled.div`
 
 const OrderInfo = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 30px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
-const InfoSection = styled.div`
+const InfoItem = styled.div`
   h3 {
     font-size: 16px;
     margin: 0 0 10px;
@@ -105,48 +109,23 @@ const InfoSection = styled.div`
   }
   
   p {
-    margin: 0 0 5px;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
   }
 `;
 
-const StatusBadge = styled.span`
-  display: inline-block;
-  padding: 5px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  
-  ${props => {
-    if (props.status === 'completed') {
-      return `
-        background-color: rgba(76, 175, 80, 0.1);
-        color: #4CAF50;
-      `;
-    } else if (props.status === 'processing') {
-      return `
-        background-color: rgba(33, 150, 243, 0.1);
-        color: #2196F3;
-      `;
-    } else if (props.status === 'cancelled') {
-      return `
-        background-color: rgba(244, 67, 54, 0.1);
-        color: #F44336;
-      `;
-    } else {
-      return `
-        background-color: rgba(255, 152, 0, 0.1);
-        color: #FF9800;
-      `;
-    }
-  }}
+const OrderStatusContainer = styled.div`
+  margin-bottom: 30px;
 `;
 
-const ProductsTable = styled.div`
-  width: 100%;
-  overflow-x: auto;
+
+
+const OrderItems = styled.div`
+  margin-top: 20px;
 `;
 
-const Table = styled.table`
+const ItemTable = styled.table`
   width: 100%;
   border-collapse: collapse;
   
@@ -171,81 +150,96 @@ const ProductImage = styled.img`
   height: 60px;
   object-fit: cover;
   border-radius: 4px;
-`;
-
-const ProductName = styled(Link)`
-  color: #333;
-  text-decoration: none;
-  font-weight: 500;
+  transition: transform 0.2s ease;
   
   &:hover {
-    color: #4CAF50;
-    text-decoration: underline;
+    transform: scale(1.05);
   }
 `;
 
-const SubtotalRow = styled.tr`
-  background-color: #f9f9f9;
+
+
+
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
   
-  td {
-    padding-top: 20px;
+  button {
+    transition: all 0.3s ease;
     
-    &:nth-child(5) {
-      font-weight: 600;
+    &:hover {
+      transform: translateY(-2px);
     }
   }
+`;
+
+const LoadingSpinner = styled.div`
+  text-align: center;
+  padding: 40px;
+  font-size: 18px;
+  color: #666;
+  
+  @keyframes pulse {
+    0% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.6;
+    }
+  }
+  
+  animation: pulse 1.5s infinite ease-in-out;
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 40px;
+  color: #F44336;
+  font-size: 18px;
 `;
 
 const OrderDetail = () => {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   useEffect(() => {
-    const fetchOrder = async () => {
+    const fetchOrderDetails = async () => {
       try {
         setLoading(true);
         const data = await orderService.getOrderById(id);
         setOrder(data);
-      } catch (error) {
-        console.error('Failed to fetch order:', error);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load order details. Please try again.');
+        console.error('Error fetching order:', err);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchOrder();
+    fetchOrderDetails();
   }, [id]);
+  
+
   
   const handleCancelOrder = async () => {
     if (window.confirm('Are you sure you want to cancel this order?')) {
       try {
-        await orderService.cancelOrder(id, 'Customer requested cancellation');
+        await orderService.cancelOrder(id);
         // Refresh order data
-        const data = await orderService.getOrderById(id);
-        setOrder(data);
-      } catch (error) {
-        console.error('Failed to cancel order:', error);
+        const updatedOrder = await orderService.getOrderById(id);
+        setOrder(updatedOrder);
+      } catch (err) {
+        setError('Failed to cancel order. Please try again.');
+        console.error('Error cancelling order:', err);
       }
-    }
-  };
-  
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'processing':
-        return 'Processing';
-      case 'shipped':
-        return 'Shipped';
-      case 'delivered':
-        return 'Delivered';
-      case 'completed':
-        return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
     }
   };
   
@@ -253,7 +247,22 @@ const OrderDetail = () => {
     return (
       <MainLayout>
         <OrderDetailContainer>
-          <p>Loading order details...</p>
+          <LoadingSpinner>Đang tải thông tin đơn hàng...</LoadingSpinner>
+        </OrderDetailContainer>
+      </MainLayout>
+    );
+  }
+  
+  if (error) {
+    return (
+      <MainLayout>
+        <OrderDetailContainer>
+          <ErrorMessage>{error}</ErrorMessage>
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <BackButton to="/orders">
+              <FaArrowLeft /> Quay lại danh sách đơn hàng
+            </BackButton>
+          </div>
         </OrderDetailContainer>
       </MainLayout>
     );
@@ -263,10 +272,12 @@ const OrderDetail = () => {
     return (
       <MainLayout>
         <OrderDetailContainer>
-          <p>Order not found or you don't have permission to view it.</p>
-          <BackLink to="/orders">
-            <FaArrowLeft /> Back to Orders
-          </BackLink>
+          <ErrorMessage>Không tìm thấy đơn hàng</ErrorMessage>
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <BackButton to="/orders">
+              <FaArrowLeft /> Quay lại danh sách đơn hàng
+            </BackButton>
+          </div>
         </OrderDetailContainer>
       </MainLayout>
     );
@@ -275,128 +286,119 @@ const OrderDetail = () => {
   return (
     <MainLayout>
       <OrderDetailContainer>
-        <BackLink to="/orders">
-          <FaArrowLeft /> Back to Orders
-        </BackLink>
-        
-        <OrderHeader>
-          <div>
-            <OrderTitle>
-              Order Details <OrderNumber>#{order.orderNumber}</OrderNumber>
-            </OrderTitle>
-          </div>
-          
-          <ActionButtons>
-            <Button variant="outline" size="small">
-              <FaFileDownload /> Download Invoice
-            </Button>
-            {(order.status === 'pending' || order.status === 'processing') && (
-              <Button 
-                variant="outline" 
-                size="small"
-                onClick={handleCancelOrder}
-              >
-                <FaTimesCircle /> Cancel Order
-              </Button>
-            )}
-          </ActionButtons>
-        </OrderHeader>
+        <OrderDetailHeader>
+          <h1>Order #{order.orderNumber}</h1>
+          <BackButton to="/orders">
+            <FaArrowLeft /> Quay lại danh sách đơn hàng
+          </BackButton>
+        </OrderDetailHeader>
         
         <CardContainer>
           <CardHeader>
-            <h2>Order Information</h2>
+            <h2><FaBox /> Thông tin đơn hàng</h2>
+          </CardHeader>
+          <CardBody>
+            <OrderStatusContainer>
+              <OrderStatus status={order.status.toLowerCase()} showTracker={true} />
+            </OrderStatusContainer>
+            
+            <OrderInfo>
+              <InfoItem>
+                <h3>Ngày đặt hàng</h3>
+                <p>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</p>
+              </InfoItem>
+              <InfoItem>
+                <h3>Phương thức thanh toán</h3>
+                <p>{order.paymentMethod}</p>
+              </InfoItem>
+              {order.estimatedDelivery && (
+                <InfoItem>
+                  <h3>Dự kiến giao hàng</h3>
+                  <p>{new Date(order.estimatedDelivery).toLocaleDateString('vi-VN')}</p>
+                </InfoItem>
+              )}
+            </OrderInfo>
+          </CardBody>
+        </CardContainer>
+        
+        <CardContainer>
+          <CardHeader>
+            <h2><FaMapMarkerAlt /> Thông tin giao hàng</h2>
           </CardHeader>
           <CardBody>
             <OrderInfo>
-              <InfoSection>
-                <h3>Order Details</h3>
-                <p><strong>Order Number:</strong> #{order.orderNumber}</p>
-                <p><strong>Date:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
+              <InfoItem>
+                <h3>Người nhận</h3>
+                <p>{order.shippingAddress.name}</p>
+              </InfoItem>
+              <InfoItem>
+                <h3>Số điện thoại</h3>
+                <p>{order.shippingAddress.phone}</p>
+              </InfoItem>
+              <InfoItem>
+                <h3>Address</h3>
                 <p>
-                  <strong>Status:</strong>{' '}
-                  <StatusBadge status={order.status.toLowerCase()}>
-                    {getStatusText(order.status)}
-                  </StatusBadge>
+                  {order.shippingAddress.address}, {order.shippingAddress.city}, {order.shippingAddress.province}, {order.shippingAddress.postalCode}
                 </p>
-                <p><strong>Payment Method:</strong> {order.paymentMethod}</p>
-              </InfoSection>
-              
-              <InfoSection>
-                <h3>Shipping Address</h3>
-                <p>{order.shipping?.firstName} {order.shipping?.lastName}</p>
-                <p>{order.shipping?.address}</p>
-                <p>{order.shipping?.city}, {order.shipping?.postalCode}</p>
-                <p>{order.shipping?.country}</p>
-              </InfoSection>
-              
-              <InfoSection>
-                <h3>Contact Information</h3>
-                <p><strong>Email:</strong> {order.customer?.email}</p>
-                <p><strong>Phone:</strong> {order.customer?.phone}</p>
-              </InfoSection>
+              </InfoItem>
             </OrderInfo>
-            
-            <ProductsTable>
-              <Table>
+          </CardBody>
+        </CardContainer>
+        
+        <CardContainer>
+          <CardHeader>
+            <h2><FaTruck /> Sản phẩm đã đặt</h2>
+          </CardHeader>
+          <CardBody>
+            <OrderItems>
+              <ItemTable>
                 <thead>
                   <tr>
-                    <th>Product</th>
-                    <th>Name</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th>Total</th>
+                    <th>Sản phẩm</th>
+                    <th>Đơn giá</th>
+                    <th>Số lượng</th>
+                    <th>Thành tiền</th>
                   </tr>
                 </thead>
                 <tbody>
                   {order.items.map(item => (
-                    <tr key={item.id}>
-                      <td>
-                        <ProductImage src={item.image} alt={item.name} />
-                      </td>
-                      <td>
-                        <ProductName to={`/products/${item.productId}`}>
-                          {item.name}
-                        </ProductName>
-                      </td>
-                      <td>{item.price}đ</td>
-                      <td>{item.quantity}</td>
-                      <td>{item.price * item.quantity}đ</td>
-                    </tr>
+                    <OrderProductItem key={item.id} item={item} />
                   ))}
-                  <tr>
-                    <td colSpan="4" align="right">Subtotal:</td>
-                    <td>{order.subtotal}đ</td>
-                  </tr>
-                  <tr>
-                    <td colSpan="4" align="right">Shipping:</td>
-                    <td>{order.shipping ? order.shipping.cost : 0}đ</td>
-                  </tr>
-                  {order.discount > 0 && (
-                    <tr>
-                      <td colSpan="4" align="right">Discount:</td>
-                      <td>-{order.discount}đ</td>
-                    </tr>
-                  )}
-                  <SubtotalRow>
-                    <td colSpan="4" align="right"><strong>Total:</strong></td>
-                    <td>{order.total}đ</td>
-                  </SubtotalRow>
                 </tbody>
-              </Table>
-            </ProductsTable>
+              </ItemTable>
+              
+              <OrderSummary 
+                subtotal={order.subtotal} 
+                shippingFee={order.shippingFee} 
+                discount={order.discount} 
+                total={order.total} 
+              />
+            </OrderItems>
           </CardBody>
         </CardContainer>
         
-        {order.notes && (
-          <CardContainer>
-            <CardHeader>
-              <h2>Additional Notes</h2>
-            </CardHeader>
-            <CardBody>
-              <p>{order.notes}</p>
-            </CardBody>
-          </CardContainer>
-        )}
+        <ActionButtons>
+          {order.status === 'pending' && (
+            <Button 
+              variant="danger" 
+              onClick={handleCancelOrder}
+            >
+              Hủy đơn hàng
+            </Button>
+          )}
+          <Button 
+            variant="outline" 
+            onClick={() => {/* Track order logic */}}
+          >
+            <FaTruck /> Theo dõi đơn hàng
+          </Button>
+          <Button 
+            variant="text" 
+            onClick={() => {/* Download invoice logic */}}
+          >
+            <FaFileInvoice /> Tải hóa đơn
+          </Button>
+        </ActionButtons>
       </OrderDetailContainer>
     </MainLayout>
   );

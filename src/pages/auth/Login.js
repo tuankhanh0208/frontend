@@ -165,24 +165,23 @@ const Login = () => {
   const redirectPath = location.state?.from || '/';
   
   const initialValues = {
-    email: '',
+    username: '',
     password: ''
   };
   
   const validationSchema = Yup.object({
-    email: Yup.string()
-      .email('Địa chỉ email không hợp lệ')
-      .required('Email là trường bắt buộc'),
+    username: Yup.string()
+      .required('Tên đăng nhập là trường bắt buộc'),
     password: Yup.string()
       .required('Mật khẩu là trường bắt buộc')
   });
   
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
-      await login(values.email, values.password);
+      await login(values.username, values.password);
       navigate(redirectPath, { replace: true });
     } catch (error) {
-      setFieldError('password', 'Email hoặc mật khẩu không chính xác');
+      setFieldError('password', 'Tên đăng nhập hoặc mật khẩu không chính xác');
     } finally {
       setSubmitting(false);
     }
@@ -219,14 +218,14 @@ const Login = () => {
           {({ isSubmitting }) => (
             <Form>
               <FormGroup>
-                <Label htmlFor="email">Email / số điện thoại</Label>
+                <Label htmlFor="username">Tên đăng nhập</Label>
                 <Input 
                   type="text" 
-                  id="email" 
-                  name="email" 
-                  placeholder="Ex: yourname@gmail.com" 
+                  id="username" 
+                  name="username" 
+                  placeholder="Nhập tên đăng nhập" 
                 />
-                <ErrorMessage name="email" component={ErrorText} />
+                <ErrorMessage name="username" component={ErrorText} />
               </FormGroup>
               
               <FormGroup>

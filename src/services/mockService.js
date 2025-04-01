@@ -1,11 +1,14 @@
 // src/services/mockService.js
-import products from '../mock/products';
-import categories from '../mock/categories';
+import { products, categories } from '../mock';
 
 // Simulated delay to mimic API calls
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const mockService = {
+  getCategories: async () => {
+    await delay(500);
+    return categories;
+  },
   getProducts: async (params = {}) => {
     await delay(500);
     
@@ -110,10 +113,7 @@ const mockService = {
     return shuffled.slice(0, 4);
   },
   
-  getCategories: async () => {
-    await delay(300);    
-    return categories;
-  },
+  // Đã có hàm getCategories ở trên nên không cần định nghĩa lại
   
   getCategoryById: async (id) => {
     await delay(200);

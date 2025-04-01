@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import { FaHome, FaAngleRight } from 'react-icons/fa';
 import MainLayout from '../layouts/MainLayout';
 import productService from '../services/productService';
+import mockService from '../services/mockService';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -180,7 +181,8 @@ const CategoryList = () => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const data = await productService.getCategories();
+        // const data = await productService.getCategories();
+        const data = await mockService.getCategories();
         setCategories(data);
       } catch (error) {
         console.error('Failed to fetch categories:', error);

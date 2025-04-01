@@ -1,3 +1,4 @@
+// src/components/common/Pagination/Pagination.js
 import React from 'react';
 import styled from 'styled-components';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';

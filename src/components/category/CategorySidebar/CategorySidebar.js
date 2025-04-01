@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { FaChevronDown, FaChevronUp, FaSearch } from 'react-icons/fa';
-import productService from '../../../services/productService';
+import { FaChevronDown, FaChevronUp, FaSearch, FaShoppingBasket } from 'react-icons/fa';
 import mockService from '../../../services/mockService';
 
 const SidebarContainer = styled.div`
@@ -11,11 +10,17 @@ const SidebarContainer = styled.div`
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
 `;
 
 const SidebarHeader = styled.div`
   padding: 15px 20px;
   border-bottom: 1px solid #eee;
+  background-color: #f8f8f8;
   
   h3 {
     margin: 0;
@@ -23,6 +28,11 @@ const SidebarHeader = styled.div`
     color: #333;
     display: flex;
     align-items: center;
+    
+    svg {
+      margin-right: 8px;
+      color: #4CAF50;
+    }
   }
 `;
 
@@ -42,10 +52,12 @@ const SearchBox = styled.div`
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    transition: all 0.3s ease;
     
     &:focus {
       outline: none;
       border-color: #4CAF50;
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
     }
   }
   
@@ -55,6 +67,11 @@ const SearchBox = styled.div`
     top: 50%;
     transform: translateY(-50%);
     color: #999;
+    transition: color 0.3s ease;
+  }
+  
+  &:hover svg {
+    color: #4CAF50;
   }
 `;
 
@@ -62,13 +79,24 @@ const CategoryList = styled.ul`
   list-style: none;
   padding: 0;
   margin: 0;
+  animation: fadeIn 0.5s ease;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 `;
 
 const CategoryItem = styled.li`
   border-bottom: 1px solid #f5f5f5;
+  transition: all 0.3s ease;
   
   &:last-child {
     border-bottom: none;
+  }
+  
+  &:hover {
+    background-color: rgba(76, 175, 80, 0.05);
   }
 `;
 
@@ -82,15 +110,21 @@ const CategoryLink = styled(Link)`
   transition: all 0.3s ease;
   font-weight: ${props => props.active ? '600' : 'normal'};
   background-color: ${props => props.active ? 'rgba(76, 175, 80, 0.1)' : 'transparent'};
+  border-left: ${props => props.active ? '3px solid #4CAF50' : '3px solid transparent'};
   
   &:hover {
     background-color: #f9f9f9;
     color: #4CAF50;
+    border-left: 3px solid #4CAF50;
+    transform: translateX(2px);
   }
   
   .count {
     color: #999;
     font-size: 12px;
+    background-color: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 10px;
   }
 `;
 
@@ -104,10 +138,17 @@ const SubcategoryList = styled.ul`
   margin: 0;
   max-height: ${props => props.expanded ? '500px' : '0'};
   overflow: hidden;
-  transition: max-height 0.3s ease;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: ${props => props.expanded ? '1' : '0'};
 `;
 
-const SubcategoryItem = styled.li``;
+const SubcategoryItem = styled.li`
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background-color: rgba(76, 175, 80, 0.05);
+  }
+`;
 
 const SubcategoryLink = styled(Link)`
   display: block;
@@ -153,11 +194,21 @@ const ToggleButton = styled.button`
 const PriceFilter = styled.div`
   padding: 15px 20px;
   border-top: 1px solid #eee;
+  background-color: #f8f8f8;
   
   h4 {
     margin: 0 0 15px;
     font-size: 16px;
     color: #333;
+    display: flex;
+    align-items: center;
+    
+    &:before {
+      content: '₫';
+      margin-right: 8px;
+      color: #4CAF50;
+      font-weight: bold;
+    }
   }
   
   .range-inputs {
@@ -171,27 +222,39 @@ const PriceFilter = styled.div`
       border: 1px solid #ddd;
       border-radius: 4px;
       font-size: 14px;
+      transition: all 0.3s ease;
       
       &:focus {
         outline: none;
         border-color: #4CAF50;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
       }
     }
   }
   
   .filter-button {
     width: 100%;
-    padding: 8px;
+    padding: 10px;
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-weight: 500;
-    transition: background-color 0.3s;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     
     &:hover {
       background-color: #388E3C;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    &:active {
+      transform: translateY(0);
+      box-shadow: none;
     }
   }
 `;
@@ -199,6 +262,7 @@ const PriceFilter = styled.div`
 const CategorySidebar = ({ onFilterChange }) => {
   const { id: categoryId } = useParams();
   const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [minPrice, setMinPrice] = useState('');
@@ -206,55 +270,32 @@ const CategorySidebar = ({ onFilterChange }) => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        // const data = await productService.getCategories();
-        const data = await mockService.getCategories();
-        console.log('Fetched categories:', data);
+        // Lấy danh sách danh mục
+        const categoriesData = await mockService.getCategories();
+        setCategories(categoriesData);
         
-        // Add subcategories to the categories (sample data)
-        const categoriesWithSubs = data.map(category => ({
-          ...category,
-          subcategories: generateSubcategories(category)
-        }));
-        
-        setCategories(categoriesWithSubs);
+        // Lấy tất cả sản phẩm để đếm số lượng sản phẩm trong mỗi danh mục
+        const productsData = await mockService.getProducts({ limit: 100 });
+        setProducts(productsData.products);
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
+        console.error('Failed to fetch data:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchCategories();
+    fetchData();
   }, []);
   
-  const generateSubcategories = (category) => {
-    if (category.id === 1) { // Thịt heo
-      return [
-        { id: 101, name: "Ba chỉ heo", slug: "ba-chi-heo", count: 12 },
-        { id: 102, name: "Thịt đùi", slug: "thit-dui", count: 8 },
-        { id: 103, name: "Sườn heo", slug: "suon-heo", count: 10 },
-        { id: 104, name: "Nạc vai", slug: "nac-vai", count: 6 }
-      ];
-    } else if (category.id === 2) { // Thịt bò
-      return [
-        { id: 201, name: "Thăn bò", slug: "than-bo", count: 9 },
-        { id: 202, name: "Bắp bò", slug: "bap-bo", count: 7 },
-        { id: 203, name: "Gầu bò", slug: "gau-bo", count: 5 }
-      ];
-    } else if (category.id === 3) { // Cá, hải sản
-      return [
-        { id: 301, name: "Cá hồi", slug: "ca-hoi", count: 6 },
-        { id: 302, name: "Tôm sú", slug: "tom-su", count: 8 },
-        { id: 303, name: "Cá thu", slug: "ca-thu", count: 4 },
-        { id: 304, name: "Mực", slug: "muc", count: 5 }
-      ];
-    }
-    
-    return [];
+  // Hàm đếm số lượng sản phẩm trong một danh mục
+  const countProductsInCategory = (categoryId) => {
+    return products.filter(product => product.categoryId === categoryId).length;
   };
+  
+
   
   const toggleCategory = (categoryId) => {
     setExpandedCategories(prev => ({
@@ -283,7 +324,7 @@ const CategorySidebar = ({ onFilterChange }) => {
   return (
     <SidebarContainer>
       <SidebarHeader>
-        <h3>Danh mục sản phẩm</h3>
+        <h3><FaShoppingBasket /> Danh mục sản phẩm</h3>
       </SidebarHeader>
       
       <SidebarContent>
@@ -308,31 +349,8 @@ const CategorySidebar = ({ onFilterChange }) => {
                   active={category.id === Number(categoryId) ? 1 : 0}
                 >
                   {category.name}
-                  {category.subcategories?.length > 0 && (
-                    <ToggleButton onClick={(e) => {
-                      e.preventDefault();
-                      toggleCategory(category.id);
-                    }}>
-                      {expandedCategories[category.id] ? <FaChevronUp /> : <FaChevronDown />}
-                    </ToggleButton>
-                  )}
+                  <span className="count">{countProductsInCategory(category.id)}</span>
                 </MainCategoryLink>
-                
-                {category.subcategories?.length > 0 && (
-                  <SubcategoryList expanded={expandedCategories[category.id]}>
-                    {category.subcategories.map(subcategory => (
-                      <SubcategoryItem key={subcategory.id}>
-                        <SubcategoryLink 
-                          to={`/categories/${category.id}/${subcategory.slug}`}
-                          active={false}
-                        >
-                          {subcategory.name}
-                          <span className="count">({subcategory.count})</span>
-                        </SubcategoryLink>
-                      </SubcategoryItem>
-                    ))}
-                  </SubcategoryList>
-                )}
               </CategoryItem>
             ))
           ) : (
@@ -359,7 +377,8 @@ const CategorySidebar = ({ onFilterChange }) => {
             />
           </div>
           <button className="filter-button" onClick={handlePriceFilter}>
-            Áp dụng
+            Áp dụng lọc giá
+            <FaSearch style={{ marginLeft: '8px', fontSize: '14px' }} />
           </button>
         </PriceFilter>
       </SidebarContent>

@@ -1,4 +1,3 @@
-
 // src/services/productService.js
 import api from './api';
 
@@ -51,7 +50,7 @@ const productService = {
   // Get featured products
   getFeaturedProducts: async () => {
     try {
-      const response = await api.get('/products/featured');
+      const response = await api.get('/api/e-commerce/products/featured');
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch featured products');

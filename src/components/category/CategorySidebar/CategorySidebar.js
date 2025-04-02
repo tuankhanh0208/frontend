@@ -195,6 +195,7 @@ const PriceFilter = styled.div`
   padding: 15px 20px;
   border-top: 1px solid #eee;
   background-color: #f8f8f8;
+  margin-top: 10px;
   
   h4 {
     margin: 0 0 15px;
@@ -215,19 +216,27 @@ const PriceFilter = styled.div`
     display: flex;
     gap: 10px;
     margin-bottom: 15px;
+    width: 100%;
     
     input {
-      flex: 1;
-      padding: 8px;
+      flex: 0 0 calc(50% - 5px);
+      padding: 8px 10px;
       border: 1px solid #ddd;
       border-radius: 4px;
       font-size: 14px;
       transition: all 0.3s ease;
+      min-width: 0;
+      box-sizing: border-box;
+      height: 40px;
       
       &:focus {
         outline: none;
         border-color: #4CAF50;
         box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+      }
+      
+      &::placeholder {
+        color: #aaa;
       }
     }
   }
@@ -245,6 +254,8 @@ const PriceFilter = styled.div`
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-top: 5px;
+    height: 40px;
     
     &:hover {
       background-color: #388E3C;
@@ -368,12 +379,14 @@ const CategorySidebar = ({ onFilterChange }) => {
               placeholder="Từ"
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
+              min="0"
             />
             <input 
               type="number" 
               placeholder="Đến"
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
+              min="0"
             />
           </div>
           <button className="filter-button" onClick={handlePriceFilter}>

@@ -4,6 +4,20 @@ import { useChat } from '../../../context/ChatContext';
 import ChatHeader from '../ChatHeader/ChatHeader';
 import ChatInput from '../ChatInput/ChatInput';
 import MessagesContainer from '../MessagesContainer/MessagesContainer';
+import { 
+  ChatContainer, 
+  ChatHeader as ChatHeaderStyles, 
+  ChatBody, 
+  ChatFooter,
+  CloseButton,
+  ChatTitle,
+  ChatInputContainer,
+  ChatInput as ChatInputStyles,
+  SendButton,
+  LoadingIndicator,
+  NewChatButton
+} from './ChatWindow.styles';
+import { FaTimes, FaChevronRight, FaArrowCircleUp, FaPlus } from 'react-icons/fa';
 
 const Container = styled.div`
   position: fixed;
@@ -23,6 +37,9 @@ const Container = styled.div`
   display: ${props => props.isOpen ? 'block' : 'none'};
 `;
 
+// Constants from ChatContext
+const SESSION_ID_KEY = 'chat_session_id';
+
 const ChatWindow = () => {
   const { 
     isOpen, 
@@ -31,7 +48,8 @@ const ChatWindow = () => {
     isLoading, 
     handleSendMessage, 
     createNewChatSession,
-    similarProducts 
+    similarProducts,
+    setSessionId
   } = useChat();
   
   const chatContainerRef = useRef();
@@ -69,7 +87,11 @@ const ChatWindow = () => {
   }, [isOpen, setIsOpen]);
 
   const startNewChat = () => {
-    createNewChatSession();
+    // Xóa session_id từ localStorage để đảm bảo tạo phiên mới hoàn toàn
+    localStorage.removeItem(SESSION_ID_KEY);
+    // Đặt sessionId trong state về null
+    setSessionId(null);
+    createNewChatSession(true);
   };
 
   return (

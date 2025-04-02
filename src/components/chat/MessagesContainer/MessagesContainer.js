@@ -1,73 +1,17 @@
 import React, { useRef, useEffect } from 'react';
-import styled from 'styled-components';
 import { CircularProgress } from '@mui/material';
 import ChatBubble from '../ChatBubble/ChatBubble';
 import ProductBubble from '../ProductBubble/ProductBubble';
 import SimilarProducts from '../SimilarProducts/SimilarProducts';
-
-const Container = styled.div`
-  height: 450px;
-  padding: 15px;
-  overflow-y: auto;
-  scroll-behavior: smooth;
-`;
-
-const LoadingContainer = styled.div`
-  display: flex;
-  padding: 10px 0;
-`;
-
-const TypingIndicator = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 15px;
-`;
-
-const TypingAvatar = styled.img`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  margin-right: 10px;
-`;
-
-const TypingDots = styled.div`
-  display: flex;
-  align-items: center;
-  background-color: rgba(57, 192, 237, 0.2);
-  padding: 12px 16px;
-  border-radius: 15px;
-`;
-
-const Dot = styled.div`
-  width: 8px;
-  height: 8px;
-  background-color: #555;
-  border-radius: 50%;
-  margin: 0 2px;
-  opacity: 0.6;
-  animation: typing 1.5s infinite ease-in-out;
-  animation-delay: ${props => props.delay}s;
-
-  @keyframes typing {
-    0%, 60%, 100% {
-      transform: translateY(0);
-    }
-    30% {
-      transform: translateY(-8px);
-    }
-  }
-`;
-
-const EmptyStateMessage = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #6c757d;
-  font-size: 14px;
-  text-align: center;
-  padding: 20px;
-`;
+import {
+  Container,
+  LoadingContainer,
+  TypingIndicator,
+  TypingAvatar,
+  TypingDots,
+  Dot,
+  EmptyStateMessage
+} from './MessagesContainer.styles';
 
 const MessagesContainer = ({ messages, isLoading, similarProducts }) => {
   const messagesEndRef = useRef();
@@ -123,6 +67,18 @@ const MessagesContainer = ({ messages, isLoading, similarProducts }) => {
     }
   };
   
+  // Kiểm tra xem một tin nhắn có nên hiển thị sản phẩm gợi ý hay không
+  const shouldShowSimilarProducts = (message) => {
+    // Chỉ hiển thị sản phẩm gợi ý cho tin nhắn bot (không phải tin nhắn người dùng)
+    if (message.isUser) return false;
+    
+    // Luôn hiển thị nếu là tin nhắn đầu tiên
+    if (message.isFirstMessage) return true;
+    
+    // Hiển thị nếu có sản phẩm gợi ý từ server
+    return similarProducts && similarProducts[message.id] && similarProducts[message.id].length > 0;
+  };
+  
   return (
     <Container 
       onClick={handleContainerClick}
@@ -154,8 +110,8 @@ const MessagesContainer = ({ messages, isLoading, similarProducts }) => {
               />
             )}
             
-            {/* Hiển thị sản phẩm tương tự sau mỗi tin nhắn bot nếu có */}
-            {!msg.isUser && similarProducts && similarProducts[msg.id] && (
+            {/* Chỉ hiển thị sản phẩm tương tự trong một số trường hợp cụ thể */}
+            {shouldShowSimilarProducts(msg) && similarProducts && similarProducts[msg.id] && (
               <SimilarProducts 
                 products={similarProducts[msg.id]} 
                 messageId={msg.id}

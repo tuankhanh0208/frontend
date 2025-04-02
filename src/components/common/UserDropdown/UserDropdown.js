@@ -10,6 +10,8 @@ const UserContainer = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
+  margin-left: 20px;
+  white-space: nowrap;
 `;
 
 const UserAvatar = styled.div`
@@ -23,33 +25,36 @@ const UserAvatar = styled.div`
   color: white;
   margin-right: 8px;
   font-size: 14px;
+  font-weight: bold;
 `;
 
 const UserInfo = styled.div`
   display: flex;
   align-items: center;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #333;
   
   svg {
     margin-left: 5px;
-    font-size: 12px;
+    font-size: 14px;
+    transition: transform 0.3s ease;
+    transform: ${({ isOpen }) => (isOpen ? 'rotate(180deg)' : 'rotate(0)')};
   }
   
   &:hover {
-    color: #0A4D7C;
+    color: #4CAF50;
   }
 `;
 
 const DropdownMenu = styled.div`
   position: absolute;
-  top: 100%;
+  top: calc(100% + 5px);
   right: 0;
-  width: 200px;
+  width: 220px;
   background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
   margin-top: 10px;
   z-index: 100;
   overflow: hidden;
@@ -65,15 +70,18 @@ const MenuItem = styled(Link)`
   padding: 12px 16px;
   color: #333;
   text-decoration: none;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  font-size: 14px;
   
   svg {
-    margin-right: 10px;
-    color: #0A4D7C;
+    margin-right: 12px;
+    color: #4CAF50;
+    font-size: 16px;
   }
   
   &:hover {
     background-color: #f5f5f5;
+    color: #4CAF50;
   }
 `;
 
@@ -87,17 +95,19 @@ const LogoutButton = styled.button`
   text-align: left;
   cursor: pointer;
   color: #333;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 14px;
   
   svg {
-    margin-right: 10px;
-    color: #0A4D7C;
+    margin-right: 12px;
+    color: #4CAF50;
+    font-size: 16px;
   }
   
   &:hover {
     background-color: #f5f5f5;
+    color: #4CAF50;
   }
 `;
 
@@ -156,7 +166,7 @@ const UserDropdown = () => {
           {getInitial()}
         </UserAvatar>
       </div>
-      <UserInfo onClick={toggleDropdown} onMouseEnter={handleMouseEnter}>
+      <UserInfo onClick={toggleDropdown} onMouseEnter={handleMouseEnter} isOpen={isOpen}>
         {currentUser?.username || 'User'}
         <FaChevronDown />
       </UserInfo>

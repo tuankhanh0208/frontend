@@ -2,6 +2,8 @@ import React from 'react';
 import styled from 'styled-components';
 import { FaComments } from 'react-icons/fa';
 import { useChat } from '../../../context/ChatContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Button = styled.button`
   position: fixed;
@@ -50,9 +52,28 @@ const UnreadBadge = styled.div`
 
 const ChatButton = () => {
   const { setIsOpen, unreadCount } = useChat();
+  const { isAuthenticated, currentUser } = useAuth();
+  const navigate = useNavigate();
+
+  const handleClick = (e) => {
+    e.stopPropagation(); // Ngăn sự kiện lan toả lên
+    
+    if (isAuthenticated && currentUser) {
+      // Nếu đã đăng nhập thì mở chat
+      setIsOpen(true);
+    } else {
+      // Nếu chưa đăng nhập thì chuyển đến trang đăng nhập
+      navigate('/login', { 
+        state: { 
+          from: window.location.pathname,
+          message: 'Vui lòng đăng nhập để sử dụng chat hỗ trợ'
+        } 
+      });
+    }
+  };
 
   return (
-    <Button onClick={() => setIsOpen(true)}>
+    <Button onClick={handleClick}>
       <FaComments />
       {unreadCount > 0 && <UnreadBadge>{unreadCount}</UnreadBadge>}
     </Button>

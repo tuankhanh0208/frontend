@@ -15,6 +15,7 @@ const RegisterContainer = styled.div`
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   background: white;
+  transition: all 0.3s ease;
 `;
 
 const RegisterTitle = styled.h1`
@@ -25,7 +26,10 @@ const RegisterTitle = styled.h1`
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 25px;
+  min-height: 90px;
+  position: relative;
+  padding-bottom: 20px;
 `;
 
 const Label = styled.label`
@@ -74,6 +78,9 @@ const ErrorText = styled.div`
   color: #d32f2f;
   font-size: 14px;
   margin-top: 5px;
+  min-height: 20px;
+  display: block;
+  position: absolute;
 `;
 
 const TermsCheckbox = styled.div`

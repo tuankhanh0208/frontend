@@ -1,5 +1,5 @@
 // src/context/AuthContext.js
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import authService from '../services/authService';
 
 export const AuthContext = createContext();
@@ -96,9 +96,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, name, email, phone, password) => {
+  const register = async (name, email, phone, password) => {
     setError(null);
     try {
+      // Tạo username dựa trên email hoặc sử dụng email làm username
+      const username = email.split('@')[0];
       const user = await authService.register(username, name, email, phone, password);
       return user;
     } catch (error) {
@@ -180,6 +182,7 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     changePassword,
     resetPassword,
+    user: currentUser,
   };
 
   return (
@@ -187,4 +190,13 @@ export const AuthProvider = ({ children }) => {
       {!loading && children}
     </AuthContext.Provider>
   );
+};
+
+// Thêm hook useAuth
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

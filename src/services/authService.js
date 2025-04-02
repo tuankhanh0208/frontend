@@ -1,4 +1,3 @@
-
 // src/services/authService.js
 import api from './api';
 import jwtDecode from 'jwt-decode';
@@ -151,7 +150,7 @@ const authService = {
       return response.data;
     } catch (error) {
       console.error('Register error:', error);
-      throw new Error(error.response?.data?.message || 'Đăng ký thất bại');
+      throw new Error(error.response?.data?.detail || error.response?.data?.message || 'Đăng ký thất bại');
     }
   },
   

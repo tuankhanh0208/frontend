@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { useChat } from '../../../context/ChatContext';
 import ChatHeader from '../ChatHeader/ChatHeader';
-import ChatBubble from '../ChatBubble/ChatBubble';
 import ChatInput from '../ChatInput/ChatInput';
+import MessagesContainer from '../MessagesContainer/MessagesContainer';
 
 const Container = styled.div`
   position: fixed;
   bottom: 30px;
   right: 30px;
-  width: 350px;
+  width: 450px; /* Mở rộng từ 350px lên 450px */
   z-index: 1000;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
   border-radius: 15px;
@@ -23,38 +23,71 @@ const Container = styled.div`
   display: ${props => props.isOpen ? 'block' : 'none'};
 `;
 
-const MessagesContainer = styled.div`
-  height: 400px;
-  padding: 15px;
-  overflow-y: auto;
-`;
-
 const ChatWindow = () => {
-  const { isOpen, setIsOpen, messages, setMessages } = useChat();
+  const { 
+    isOpen, 
+    setIsOpen, 
+    messages, 
+    isLoading, 
+    handleSendMessage, 
+    createNewChatSession,
+    similarProducts 
+  } = useChat();
+  
+  const chatContainerRef = useRef();
 
-  const handleSendMessage = (text) => {
-    const newMessage = {
-      id: Date.now(),
-      text,
-      isUser: true,
-      avatar: 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava2-bg.webp'
+  // Xử lý sự kiện click bên ngoài để đóng chat window
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      // Kiểm tra xem sự kiện click có xuất phát từ ChatButton không
+      const isChatButtonClick = event.target.closest('button') && 
+                               (event.target.closest('button').querySelector('svg') || 
+                                event.target.tagName === 'svg' || 
+                                event.target.closest('svg'));
+      
+      // Chỉ đóng khi click bên ngoài chat window, không phải từ chat button và chat window đang mở
+      if (chatContainerRef.current && 
+          !chatContainerRef.current.contains(event.target) && 
+          !isChatButtonClick &&
+          isOpen) {
+        setIsOpen(false);
+      }
     };
-    setMessages([...messages, newMessage]);
+  
+    // Thêm event listener khi component được mount và chat window đang mở
+    if (isOpen) {
+      // Sử dụng setTimeout để đảm bảo event listener được thêm sau khi DOM đã cập nhật
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleOutsideClick);
+      }, 0);
+    }
+  
+    // Cleanup event listener khi component unmount hoặc chat window đóng
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isOpen, setIsOpen]);
+
+  const startNewChat = () => {
+    createNewChatSession();
   };
 
   return (
-    <Container isOpen={isOpen}>
-      <ChatHeader onClose={() => setIsOpen(false)} />
-      <MessagesContainer>
-        {messages.map(msg => (
-          <ChatBubble
-            key={msg.id}
-            message={msg.text}
-            isUser={msg.isUser}
-            avatar={msg.avatar}
-          />
-        ))}
-      </MessagesContainer>
+    <Container 
+      isOpen={isOpen} 
+      ref={chatContainerRef}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <ChatHeader 
+        onClose={() => setIsOpen(false)} 
+        onNewChat={startNewChat} 
+      />
+      <MessagesContainer 
+        messages={messages} 
+        isLoading={isLoading} 
+        similarProducts={similarProducts}
+      />
       <ChatInput onSend={handleSendMessage} />
     </Container>
   );

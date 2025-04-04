@@ -5,7 +5,6 @@ import styled from 'styled-components';
 import { FaHome, FaAngleRight } from 'react-icons/fa';
 import MainLayout from '../layouts/MainLayout';
 import productService from '../services/productService';
-import mockService from '../services/mockService';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -181,9 +180,10 @@ const CategoryList = () => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        // const data = await productService.getCategories();
-        const data = await mockService.getCategories();
-        setCategories(data);
+        const data = await productService.getCategories();
+        // Lọc ra chỉ các categories chính (không có parent_id)
+        const mainCategories = data.filter(category => !category.parent_id);
+        setCategories(mainCategories);
       } catch (error) {
         console.error('Failed to fetch categories:', error);
       } finally {
@@ -228,18 +228,15 @@ const CategoryList = () => {
         ) : (
           <CategoryGrid>
             {categories.map(category => (
-              <CategoryCard key={category.id}>
+              <CategoryCard key={category.category_id}>
                 <CategoryImageContainer>
-                  <img src={category.image} alt={category.name} />
+                  <img src={category.image_url || `/images/categories/default.jpg`} alt={category.name} />
                 </CategoryImageContainer>
                 <CategoryContent>
                   <CategoryName>
-                    <Link to={`/categories/${category.id}`}>{category.name}</Link>
-                  </CategoryName>
-                  <CategoryDescription>
-                    {category.description}
-                  </CategoryDescription>
-                  <ViewButton to={`/categories/${category.id}`}>
+                    <Link to={`/categories/${category.category_id}`}>{category.name}</Link>
+                  </CategoryName>                  
+                  <ViewButton to={`/categories/${category.category_id}`}>
                     Xem sản phẩm
                   </ViewButton>
                 </CategoryContent>

@@ -1,9 +1,9 @@
 // src/components/category/CategorySidebar/CategorySidebar.js
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaChevronDown, FaChevronUp, FaSearch, FaShoppingBasket } from 'react-icons/fa';
-import mockService from '../../../services/mockService';
+import productService from '../../../services/productService';
 
 const SidebarContainer = styled.div`
   background-color: white;
@@ -270,131 +270,130 @@ const PriceFilter = styled.div`
   }
 `;
 
-const CategorySidebar = ({ onFilterChange }) => {
-  const { id: categoryId } = useParams();
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [expandedCategories, setExpandedCategories] = useState({});
+const CategorySidebar = ({ categoryId, onFilterChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [subcategories, setSubcategories] = useState([]);
+  const [rootCategoryId, setRootCategoryId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { id } = useParams();
+  const navigate = useNavigate();
   
+  // Lấy và lưu trữ rootCategoryId khi component mount lần đầu
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Lấy danh sách danh mục
-        const categoriesData = await mockService.getCategories();
-        setCategories(categoriesData);
-        
-        // Lấy tất cả sản phẩm để đếm số lượng sản phẩm trong mỗi danh mục
-        const productsData = await mockService.getProducts({ limit: 100 });
-        setProducts(productsData.products);
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, []);
-  
-  // Hàm đếm số lượng sản phẩm trong một danh mục
-  const countProductsInCategory = (categoryId) => {
-    return products.filter(product => product.categoryId === categoryId).length;
-  };
-  
-
-  
-  const toggleCategory = (categoryId) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [categoryId]: !prev[categoryId]
-    }));
-  };
-  
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-  
-  const handlePriceFilter = () => {
-    if (onFilterChange) {
-      onFilterChange({
-        minPrice: minPrice ? parseInt(minPrice) : undefined,
-        maxPrice: maxPrice ? parseInt(maxPrice) : undefined
-      });
+    // Chỉ cập nhật rootCategoryId khi chưa có giá trị
+    if (!rootCategoryId && id) {
+      setRootCategoryId(id);
     }
+  }, [id, rootCategoryId]);
+  
+  // Lấy subcategories của category gốc
+  useEffect(() => {
+    // Chỉ fetch dữ liệu khi có rootCategoryId
+    if (rootCategoryId) {
+      const fetchSubcategories = async () => {
+        try {
+          setLoading(true);
+          // Luôn lấy subcategories của category gốc, không phải subcategory hiện tại
+          const data = await productService.getSubcategories(rootCategoryId);
+          setSubcategories(data);
+        } catch (error) {
+          console.error('Failed to fetch subcategories:', error);
+          setSubcategories([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchSubcategories();
+    }
+  }, [rootCategoryId]);
+  
+  // Apply price filter
+  const applyPriceFilter = () => {
+    onFilterChange({
+      minPrice: minPrice ? parseFloat(minPrice) : undefined,
+      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined
+    });
   };
   
-  const filteredCategories = categories.filter(category => 
-    category.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter subcategories by search term
+  const filteredSubcategories = searchTerm
+    ? subcategories.filter(category => 
+        category.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : subcategories;
   
   return (
     <SidebarContainer>
       <SidebarHeader>
-        <h3><FaShoppingBasket /> Danh mục sản phẩm</h3>
+        <h3>
+          <FaShoppingBasket /> Danh mục sản phẩm
+        </h3>
       </SidebarHeader>
       
       <SidebarContent>
+        {/* Search box for categories */}
         <SearchBox>
-          <FaSearch />
           <input 
-            type="text" 
-            placeholder="Tìm danh mục..." 
+            type="text"
+            placeholder="Tìm danh mục..."
             value={searchTerm}
-            onChange={handleSearchChange}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
+          <FaSearch />
         </SearchBox>
         
-        <CategoryList>
-          {loading ? (
-            <div style={{ padding: '20px', textAlign: 'center' }}>Đang tải...</div>
-          ) : filteredCategories.length > 0 ? (
-            filteredCategories.map(category => (
-              <CategoryItem key={category.id}>
-                <MainCategoryLink 
-                  to={`/categories/${category.id}`}
-                  active={category.id === Number(categoryId) ? 1 : 0}
+        {/* Categories list */}
+        {loading ? (
+          <div style={{ padding: '15px 20px', textAlign: 'center' }}>Đang tải...</div>
+        ) : filteredSubcategories.length > 0 ? (
+          <CategoryList>
+            {filteredSubcategories.map(category => (
+              <CategoryItem key={category.category_id}>
+                <CategoryLink 
+                  to={`/categories/${category.category_id}`}
+                  active={parseInt(id) === category.category_id ? 1 : 0}
                 >
                   {category.name}
-                  <span className="count">{countProductsInCategory(category.id)}</span>
-                </MainCategoryLink>
+                </CategoryLink>
               </CategoryItem>
-            ))
-          ) : (
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-              Không tìm thấy danh mục nào
-            </div>
-          )}
-        </CategoryList>
-        
-        <PriceFilter>
-          <h4>Lọc theo giá</h4>
-          <div className="range-inputs">
-            <input 
-              type="number" 
-              placeholder="Từ"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-              min="0"
-            />
-            <input 
-              type="number" 
-              placeholder="Đến"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-              min="0"
-            />
+            ))}
+          </CategoryList>
+        ) : (
+          <div style={{ padding: '15px 20px', color: '#666' }}>
+            Không có danh mục con
           </div>
-          <button className="filter-button" onClick={handlePriceFilter}>
-            Áp dụng lọc giá
-            <FaSearch style={{ marginLeft: '8px', fontSize: '14px' }} />
-          </button>
-        </PriceFilter>
+        )}
       </SidebarContent>
+      
+      {/* Price filter */}
+      <PriceFilter>
+        <h4>Lọc theo giá</h4>
+        <div className="range-inputs">
+          <input 
+            type="number" 
+            placeholder="Giá tối thiểu"
+            value={minPrice}
+            onChange={(e) => setMinPrice(e.target.value)}
+            min="0"
+          />
+          <input 
+            type="number" 
+            placeholder="Giá tối đa"
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+            min={minPrice || "0"}
+          />
+        </div>
+        <button 
+          className="filter-button"
+          onClick={applyPriceFilter}
+        >
+          Áp dụng lọc giá
+        </button>
+      </PriceFilter>
     </SidebarContainer>
   );
 };

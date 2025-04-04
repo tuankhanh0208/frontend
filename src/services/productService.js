@@ -25,7 +25,7 @@ const productService = {
   // Get products by category
   getProductsByCategory: async (categoryId, params = {}) => {
     try {
-      const response = await api.get(`/categories/${categoryId}/products`, { params });
+      const response = await api.get(`/api/e-commerce/categories/${categoryId}/products`, { params });
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch products by category');
@@ -78,14 +78,34 @@ const productService = {
   },
   
   // Get all categories
-  // getCategories: async () => {
-  //   try {
-  //     const response = await api.get('/categories');
-  //     return response.data;
-  //   } catch (error) {
-  //     throw new Error(error.response?.data?.message || 'Failed to fetch categories');
-  //   }
-  // }
+  getCategories: async () => {
+    try {
+      const response = await api.get('/api/e-commerce/categories');
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch categories');
+    }
+  },
+  
+  // Get subcategories by parent category ID
+  getSubcategories: async (categoryId) => {
+    try {
+      const response = await api.get(`/api/e-commerce/categories/${categoryId}/subcategories`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch subcategories');
+    }
+  },
+  
+  // Get category tree structure
+  getCategoryTree: async () => {
+    try {
+      const response = await api.get('/api/e-commerce/categories-tree');
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch category tree');
+    }
+  }
 };
 
 export default productService;

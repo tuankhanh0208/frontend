@@ -1,27 +1,18 @@
 // src/pages/CategoryProducts.js
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaHome, FaAngleRight } from 'react-icons/fa';
 import MainLayout from '../layouts/MainLayout';
 import CategoryProductItem from '../components/category/CategoryProductItem/CategoryProductItem';
 import Pagination from '../components/common/Pagination/Pagination';
 import CategorySidebar from '../components/category/CategorySidebar/CategorySidebar';
-import mockService from '../services/mockService';
+import productService from '../services/productService';
 
 const PageContainer = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-`;
-
-// Trong CategorySidebar.js, thêm border đỏ để dễ nhìn
-const SidebarContainer = styled.div`
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  border: 2px solid red; /* Thêm border đỏ để dễ nhìn */
 `;
 
 const BreadcrumbNav = styled.nav`
@@ -169,9 +160,37 @@ const LoadingSpinner = styled.div`
   font-size: 18px;
 `;
 
+// Thêm styled component cho URL
+const CategoryURL = styled.div`
+  color: #666;
+  margin-bottom: 15px;
+  font-size: 14px;
+  
+  a {
+    color: #4CAF50;
+    text-decoration: none;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+`;
+
+// Lấy category ID gốc từ URL
+const getRootCategoryId = (pathname) => {
+  // Lấy phần đầu tiên của route '/categories/X/...'
+  const matches = pathname.match(/\/categories\/(\d+)/);
+  if (matches && matches[1]) {
+    return matches[1];
+  }
+  return null;
+};
+
 const CategoryProducts = () => {
   const { id } = useParams();
+  const location = useLocation();
   const [category, setCategory] = useState(null);
+  const [rootCategoryId, setRootCategoryId] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -182,18 +201,46 @@ const CategoryProducts = () => {
     maxPrice: undefined
   });
   
+  // Xác định rootCategoryId khi component load lần đầu
   useEffect(() => {
-    const fetchCategoryData = async () => {
+    // Nếu đã có trong URL thì sử dụng, nếu không thì dùng id hiện tại
+    const rootId = getRootCategoryId(location.pathname) || id;
+    setRootCategoryId(rootId);
+  }, [location.pathname, id]);
+  
+  // Lấy thông tin category từ ID
+  useEffect(() => {
+    const fetchCategoryInfo = async () => {
+      try {
+        const allCategories = await productService.getCategories();
+        const categoryInfo = allCategories.find(c => c.category_id === parseInt(id));
+        
+        if (categoryInfo) {
+          setCategory(categoryInfo);
+        } else {
+          setCategory({
+            category_id: parseInt(id),
+            name: 'Danh mục sản phẩm',
+            description: 'Sản phẩm thuộc danh mục này'
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch category info:', error);
+      }
+    };
+    
+    fetchCategoryInfo();
+  }, [id]);
+  
+  // Lấy sản phẩm thuộc category
+  useEffect(() => {
+    const fetchProducts = async () => {
       try {
         setLoading(true);
         
-        // Fetch category details
-        const categoryData = await mockService.getCategoryById(id);
-        setCategory(categoryData);
-        
         // Fetch products for this category with filters
-        const productData = await mockService.getProducts({
-          category: id,
+        const productData = await productService.getProductsByCategory(id, {
+          include_subcategories: false, // Chỉ lấy sản phẩm trực tiếp của category này
           page: currentPage,
           limit: 8,
           sort: filters.sort,
@@ -201,16 +248,16 @@ const CategoryProducts = () => {
           maxPrice: filters.maxPrice
         });
         
-        setProducts(productData.products);
-        setTotalPages(productData.totalPages);
+        setProducts(productData);
+        setTotalPages(Math.ceil(productData.length / 8) || 1);
       } catch (error) {
-        console.error('Failed to fetch category data:', error);
+        console.error('Failed to fetch products:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchCategoryData();
+    fetchProducts();
   }, [id, currentPage, filters]);
   
   const handlePageChange = (page) => {
@@ -253,71 +300,84 @@ const CategoryProducts = () => {
             </li>
             <li>
               <Link to={`/categories/${id}`}>
-                {category?.name || 'Danh mục sản phẩm'}
+                {category ? category.name : 'Đang tải...'}
               </Link>
             </li>
           </ul>
         </BreadcrumbNav>
         
         <ContentContainer>
-          <CategorySidebar onFilterChange={handleFilterChange} />
+          <CategorySidebar 
+            categoryId={rootCategoryId} 
+            onFilterChange={handleFilterChange}
+          />
           
           <MainContent>
-            {loading && !category ? (
+            {category && (
+              <CategoryHeader>
+                <CategoryTitle>{category.name}</CategoryTitle>
+                {/* <CategoryURL>
+                  URL: <a href={`https://www.bachhoaxanh.com`} target="_blank" rel="noopener noreferrer">
+                    https://www.bachhoaxanh.com/{category.name.toLowerCase().replace(/\s+/g, '-')}
+                  </a>
+                </CategoryURL> */}
+                {/* <CategoryDescription>{category.description}</CategoryDescription> */}
+              </CategoryHeader>
+            )}
+            
+            <ProductsHeader>
+              <ProductCount>
+                Hiển thị {products.length} sản phẩm
+              </ProductCount>
+              <SortSelector 
+                value={filters.sort} 
+                onChange={handleSortChange}
+              >
+                <option value="newest">Mới nhất</option>
+                <option value="price-asc">Giá: Thấp đến cao</option>
+                <option value="price-desc">Giá: Cao đến thấp</option>
+                <option value="name-asc">Tên: A-Z</option>
+                <option value="name-desc">Tên: Z-A</option>
+              </SortSelector>
+            </ProductsHeader>
+            
+            {loading ? (
               <LoadingSpinner>
-                Đang tải danh mục sản phẩm...
+                Đang tải sản phẩm...
               </LoadingSpinner>
-            ) : (
+            ) : products.length > 0 ? (
               <>
-                <CategoryHeader>
-                  <CategoryTitle>{category?.name}</CategoryTitle>
-                  <CategoryDescription>{category?.description}</CategoryDescription>
-                </CategoryHeader>
-                
-                <ProductsHeader>
-                  <ProductCount>
-                    {products?.length > 0 
-                      ? `Hiển thị ${products.length} sản phẩm`
-                      : 'Không có sản phẩm nào'
-                    }
-                  </ProductCount>
-                  
-                  <SortSelector value={filters.sort} onChange={handleSortChange}>
-                    <option value="newest">Mới nhất</option>
-                    <option value="price-asc">Giá: Thấp đến cao</option>
-                    <option value="price-desc">Giá: Cao đến thấp</option>
-                    <option value="rating">Đánh giá cao nhất</option>
-                  </SortSelector>
-                </ProductsHeader>
-                
-                {loading ? (
-                  <LoadingSpinner>
-                    Đang tải sản phẩm...
-                  </LoadingSpinner>
-                ) : products.length > 0 ? (
-                  <>
-                    <ProductGrid>
-                      {products.map(product => (
-                        <CategoryProductItem 
-                          key={product.id} 
-                          product={product}
-                        />
-                      ))}
-                    </ProductGrid>
-                    
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={handlePageChange}
+                <ProductGrid>
+                  {products.map(product => (
+                    <CategoryProductItem 
+                      key={product.product_id} 
+                      product={{
+                        id: product.product_id,
+                        name: product.name,
+                        originalPrice: product.original_price,
+                        discountPrice: product.discount_price,
+                        discountPercent: product.discount_percent,
+                        image: product.image_url,
+                        rating: 4,
+                        ratingCount: 10
+                      }} 
                     />
-                  </>
-                ) : (
-                  <NoProducts>
-                    <h3>Không tìm thấy sản phẩm</h3>
-                    <p>Vui lòng thử lại với bộ lọc khác hoặc xem các danh mục khác.</p>
-                  </NoProducts>
+                  ))}
+                </ProductGrid>
+                
+                {totalPages > 1 && (
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
                 )}
               </>
+            ) : (
+              <NoProducts>
+                <h3>Không tìm thấy sản phẩm</h3>
+                <p>Không có sản phẩm nào trong danh mục này. Vui lòng thử danh mục khác.</p>
+              </NoProducts>
             )}
           </MainContent>
         </ContentContainer>

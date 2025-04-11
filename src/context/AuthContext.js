@@ -169,6 +169,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateAvatar = async (avatarFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', avatarFile);
+      
+      const result = await authService.updateAvatar(formData);
+      if (result && result.avatar_url) {
+        // Cập nhật thông tin user trong context để cập nhật UI toàn ứng dụng
+        setCurrentUser(prevUser => ({
+          ...prevUser,
+          avatar_url: result.avatar_url
+        }));
+        return result;
+      }
+      return null;
+    } catch (error) {
+      setError(error.message || 'Avatar update failed');
+      throw error;
+    }
+  };
+
   const changePassword = async (currentPassword, newPassword) => {
     try {
       await authService.changePassword(currentPassword, newPassword);
@@ -198,6 +219,7 @@ export const AuthProvider = ({ children }) => {
     loginWithGoogle,
     loginWithFacebook,
     updateProfile,
+    updateAvatar,
     changePassword,
     resetPassword,
     user: currentUser,

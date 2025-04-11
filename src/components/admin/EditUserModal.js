@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaTimes } from 'react-icons/fa';
+import { FaTimes, FaUser } from 'react-icons/fa';
 import Button from '../common/Button/Button';
+import getAvatarUrl from '../../utils/avatarUtil';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -125,6 +126,13 @@ const UserAvatar = styled.div`
   color: white;
   font-weight: bold;
   margin: 0 auto 20px;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const FormRow = styled.div`
@@ -148,7 +156,8 @@ const EditUserModal = ({ user, isOpen, onClose, onSave, isLoading = false }) => 
     full_name: '',
     password: '',
     role: '',
-    status: ''
+    status: '',
+    avatar_url: ''
   });
   
   const [errors, setErrors] = useState({});
@@ -162,7 +171,8 @@ const EditUserModal = ({ user, isOpen, onClose, onSave, isLoading = false }) => 
         full_name: user.name || '',
         password: '',
         role: user.role || '',
-        status: user.status || ''
+        status: user.status || '',
+        avatar_url: user.avatar_url || ''
       });
     }
   }, [user]);
@@ -280,8 +290,18 @@ const EditUserModal = ({ user, isOpen, onClose, onSave, isLoading = false }) => 
             )}
             
             <UserAvatar color={getAvatarColor()}>
-              {getInitials(formData.full_name || 'User')}
+              {formData.avatar_url ? (
+                <img src={formData.avatar_url} alt={formData.full_name || 'User'} />
+              ) : (
+                getInitials(formData.full_name || 'User')
+              )}
             </UserAvatar>
+            
+            {!formData.avatar_url && (
+              <div style={{ textAlign: 'center', marginBottom: '20px', fontSize: '0.9rem', color: '#666' }}>
+                Avatar sẽ được cập nhật khi người dùng tải lên ảnh đại diện của họ.
+              </div>
+            )}
             
             <FormRow>
               <FormColumn>

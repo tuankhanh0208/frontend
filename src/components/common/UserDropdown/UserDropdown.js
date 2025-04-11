@@ -26,6 +26,13 @@ const UserAvatar = styled.div`
   margin-right: 8px;
   font-size: 14px;
   font-weight: bold;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const UserInfo = styled.div`
@@ -163,7 +170,11 @@ const UserDropdown = () => {
     <UserContainer ref={dropdownRef}>
       <div onClick={toggleDropdown} onMouseEnter={handleMouseEnter}>
         <UserAvatar>
-          {getInitial()}
+          {currentUser?.avatar_url ? (
+            <img src={currentUser.avatar_url} alt="User Avatar" />
+          ) : (
+            getInitial()
+          )}
         </UserAvatar>
       </div>
       <UserInfo onClick={toggleDropdown} onMouseEnter={handleMouseEnter} isOpen={isOpen}>

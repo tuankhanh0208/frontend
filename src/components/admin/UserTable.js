@@ -449,7 +449,10 @@ const UserTable = ({
   const handleEditUser = (userId) => {
     const userToEdit = users.find(user => user.id === userId);
     if (userToEdit) {
-      setCurrentUser(userToEdit);
+      setCurrentUser({
+        ...userToEdit,
+        avatar_url: userToEdit.avatar_url || ''
+      });
       setShowEditModal(true);
     }
   };
@@ -617,8 +620,8 @@ const UserTable = ({
                   <TableRow key={user.id}>
                     <TableCell>
                       <UserInfo>
-                        <UserAvatar src={getAvatarUrl(user.name)} alt={user.name} />
-                        <UserName>{user.name}</UserName>
+                        <UserAvatar src={getAvatarUrl(user)} alt={user.name || user.full_name || user.username} />
+                        <UserName>{user.name || user.full_name || user.username}</UserName>
                       </UserInfo>
                     </TableCell>
                     <TableCell>{user.username}</TableCell>
@@ -692,10 +695,10 @@ const UserTable = ({
             <ModalBody>
               <DeleteUserInfo>
                 <DeleteUserAvatar>
-                  <img src={getAvatarUrl(userToDelete.name)} alt={userToDelete.name} />
+                  <img src={getAvatarUrl(userToDelete)} alt={userToDelete.name || userToDelete.full_name || userToDelete.username} />
                 </DeleteUserAvatar>
                 <DeleteUserDetails>
-                  <DeleteUserName>{userToDelete.name}</DeleteUserName>
+                  <DeleteUserName>{userToDelete.name || userToDelete.full_name || userToDelete.username}</DeleteUserName>
                   <DeleteUserRole>
                     <StatusBadge status={userToDelete.status}>
                       {userToDelete.status}

@@ -52,7 +52,8 @@ const UserList = () => {
           email: user.email,
           dateCreated: new Date(user.created_at).toLocaleDateString(),
           role: user.role.charAt(0).toUpperCase() + user.role.slice(1),
-          status: status.charAt(0).toUpperCase() + status.slice(1)
+          status: status.charAt(0).toUpperCase() + status.slice(1),
+          avatar_url: user.avatar_url
         };
       });
       
@@ -113,7 +114,8 @@ const UserList = () => {
           email: user.email,
           dateCreated: new Date(user.created_at).toLocaleDateString(),
           role: user.role.charAt(0).toUpperCase() + user.role.slice(1),
-          status: status.charAt(0).toUpperCase() + status.slice(1)
+          status: status.charAt(0).toUpperCase() + status.slice(1),
+          avatar_url: user.avatar_url
         };
       });
       
@@ -180,13 +182,18 @@ const UserList = () => {
         status = 'blocked'; // Thay đổi từ 'inactive' thành 'blocked'
       }
       
+      // Tìm người dùng hiện tại để lấy avatar_url
+      const currentUser = users.find(user => user.id === userId);
+      
       // Chuyển đổi dữ liệu để phù hợp với API
       const apiUserData = {
         username: userData.username,
         email: userData.email,
         full_name: userData.name,
         role: userData.role.toLowerCase(),
-        status: status
+        status: status,
+        // Giữ nguyên avatar_url nếu người dùng đã có
+        avatar_url: currentUser?.avatar_url || ''
       };
       
       // Chỉ thêm password nếu được cung cấp

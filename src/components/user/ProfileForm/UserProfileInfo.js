@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { FaEdit, FaCamera, FaUser, FaMapMarkerAlt } from 'react-icons/fa';
 import useUser from '../../../hooks/useUser';
 
@@ -219,6 +219,29 @@ const FileInput = styled.input`
   display: none;
 `;
 
+const spin = keyframes`
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+`;
+
+const LoadingSpinner = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  
+  &::before {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    animation: ${spin} 0.8s infinite linear;
+    margin-bottom: 5px;
+  }
+`;
+
 const UserProfileInfo = () => {
   const { user, loading, error, updateUser, updateAvatar } = useUser();
   const [editMode, setEditMode] = useState(false);
@@ -231,6 +254,8 @@ const UserProfileInfo = () => {
   });
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
   
   React.useEffect(() => {
@@ -282,10 +307,12 @@ const UserProfileInfo = () => {
       const success = await updateUser(updateData);
       
       if (success) {
+        setSuccessMessage('Cập nhật thông tin thành công!');
         setSuccess(true);
         setEditMode(false);
         setTimeout(() => {
           setSuccess(false);
+          setSuccessMessage('');
         }, 3000);
       }
     } catch (err) {
@@ -316,16 +343,21 @@ const UserProfileInfo = () => {
     
     try {
       setErrorMessage('');
+      setUploading(true);
       const result = await updateAvatar(file);
       
       if (result) {
+        setSuccessMessage('Cập nhật ảnh đại diện thành công!');
         setSuccess(true);
         setTimeout(() => {
           setSuccess(false);
+          setSuccessMessage('');
         }, 3000);
       }
     } catch (err) {
       setErrorMessage('Không thể cập nhật ảnh đại diện. Vui lòng thử lại sau.');
+    } finally {
+      setUploading(false);
     }
   };
   
@@ -337,9 +369,9 @@ const UserProfileInfo = () => {
     <Container>
       <Title>Thông tin tài khoản</Title>
       
-      {success && (
+      {success && successMessage && (
         <SuccessMessage>
-          Cập nhật thông tin thành công!
+          {successMessage}
         </SuccessMessage>
       )}
       
@@ -357,14 +389,22 @@ const UserProfileInfo = () => {
             <FaUser />
           )}
           <AvatarOverlay onClick={handleAvatarClick}>
-            <FaCamera />
+            {uploading ? (
+              <LoadingSpinner>
+                <span style={{ color: 'white', fontSize: '14px' }}>Đang tải...</span>
+              </LoadingSpinner>
+            ) : (
+              <FaCamera />
+            )}
           </AvatarOverlay>
         </Avatar>
         <AvatarInfo>
           <p>Cập nhật hình ảnh đại diện của bạn</p>
           <p>Định dạng cho phép: JPG, PNG, GIF, WebP</p>
           <p>Kích thước tối đa: 2MB</p>
-          <button onClick={handleAvatarClick}>Chọn ảnh</button>
+          <button onClick={handleAvatarClick} disabled={uploading}>
+            {uploading ? 'Đang tải...' : 'Chọn ảnh'}
+          </button>
         </AvatarInfo>
         <FileInput 
           type="file" 

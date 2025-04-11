@@ -427,8 +427,9 @@ const authService = {
   
   // Update user profile
   updateProfile: async (userData) => {
+    console.warn('DEPRECATED: authService.updateProfile() đã được di chuyển sang userService.updateProfile()');
     try {
-      const response = await api.put('/api/auth/profile', userData);
+      const response = await api.put('/api/users/profile', userData);
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Cập nhật hồ sơ thất bại');
@@ -438,14 +439,14 @@ const authService = {
   // Upload avatar
   updateAvatar: async (formData) => {
     try {
-      const response = await api.post('/api/auth/me/avatar', formData, {
+      const response = await api.post('/api/users/me/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Cập nhật ảnh đại diện thất bại');
+      throw new Error(error.response?.data?.detail || 'Cập nhật ảnh đại diện thất bại');
     }
   },
   

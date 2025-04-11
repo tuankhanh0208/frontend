@@ -101,11 +101,11 @@ const tokenUtils = {
 };
 
 const authService = {
-  // Login with username and password
-  login: async (username, password) => {
+  // Login with username/email and password
+  login: async (username_or_email, password) => {
     try {
-      console.log('Attempting login for user:', username);
-      const response = await api.post('/api/auth/login', { username, password });
+      console.log('Attempting login for user:', username_or_email);
+      const response = await api.post('/api/auth/login', { username_or_email, password });
       
       console.log('Login response:', response.data);
       const { token, token_type, user_id, role } = response.data;
@@ -127,13 +127,21 @@ const authService = {
       const userData = {
         id: user_id,
         role: role,
-        username: username
+        username: username_or_email
       };
+      
+      // Gọi API /api/auth/me bất đồng bộ để cập nhật thông tin người dùng trong cache server
+      authService.fetchUserInfoAsync().catch(error => {
+        console.error('Background user info fetch failed:', error.message);
+      });
   
       return userData;
     } catch (error) {
       console.error('Login error:', error);
-      throw new Error(error.response?.data?.detail || 'Đăng nhập thất bại');
+      // Truyền thêm thông tin response để component login có thể kiểm tra status code và hiển thị thông báo phù hợp
+      const errorObj = new Error(error.response?.data?.detail || 'Đăng nhập thất bại');
+      errorObj.response = error.response;
+      throw errorObj;
     }
   },
   
@@ -158,11 +166,18 @@ const authService = {
   logout: async () => {
     try {
       console.log('Performing logout');
-      // Xóa token ngay lập tức không cần đợi API
-      tokenUtils.clearTokens();
       
-      // Có thể bỏ qua phần gọi API nếu backend không hỗ trợ
-      // const response = await api.post('/api/auth/logout');
+      try {
+        // Gọi API logout để xóa cache phía server
+        await api.post('/api/auth/logout');
+        console.log('Server-side logout completed');
+      } catch (error) {
+        // Không cần xử lý lỗi API ở đây, vẫn tiếp tục logout ở client
+        console.error('Server-side logout failed:', error.message);
+      }
+      
+      // Xóa token ngay lập tức 
+      tokenUtils.clearTokens();
       
       console.log('Logout successful');
     } catch (error) {
@@ -227,44 +242,29 @@ const authService = {
         return null;
       }
       
-      // Giải mã token để lấy thông tin username
-      try {
-        const { accessToken } = tokenUtils.getTokens();
-        
-        if (!accessToken) {
-          return null;
-        }
-
-        // Giải mã token để lấy thông tin cơ bản
-        const decodedToken = jwtDecode(accessToken);
-        
-        try {
-          // Gọi API để lấy thông tin user đầy đủ
-          const response = await api.get('/api/auth/me');
-          
-          // Kết hợp thông tin từ token và API
-          return {
-            ...response.data,
-            username: decodedToken.username || response.data.username,
-            role: response.data.role,
-            id: response.data.id
-          };
-        } catch (error) {
-          if (error.response?.status === 401) {
-            tokenUtils.clearTokens();
-          }
-          return null;
-        }
-      } catch (error) {
-        console.error('Failed to decode token:', error);
-        console.log('Current user fetched successfully');
-        return response.data;
-      }
+      console.log('Current user fetched successfully');
+      return response.data;
     } catch (error) {
       console.error('Failed to get current user:', {
         message: error.message,
         responseStatus: error.response?.status,
         responseData: error.response?.data
+      });
+      return null;
+    }
+  },
+  
+  // Fetch user info asynchronously without waiting for response
+  fetchUserInfoAsync: async () => {
+    try {
+      console.log('Fetching user info in background');
+      const response = await api.get('/api/auth/me');
+      console.log('Background user info fetch completed');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch user info in background:', {
+        message: error.message,
+        status: error.response?.status
       });
       return null;
     }
@@ -432,6 +432,20 @@ const authService = {
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Cập nhật hồ sơ thất bại');
+    }
+  },
+  
+  // Upload avatar
+  updateAvatar: async (formData) => {
+    try {
+      const response = await api.post('/api/auth/me/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Cập nhật ảnh đại diện thất bại');
     }
   },
   

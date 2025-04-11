@@ -84,23 +84,41 @@ export const AuthProvider = ({ children }) => {
   
   // Thêm console.log để debug quá trình đăng nhập
 
-  const login = async (username, password) => {
+  const login = async (username_or_email, password) => {
     setError(null);
     try {
-      const user = await authService.login(username, password);
-      setCurrentUser(user);
-      return user;
+      // Đăng nhập ban đầu để lấy thông tin cơ bản
+      const basicUser = await authService.login(username_or_email, password);
+      
+      // Cập nhật thông tin user cơ bản ngay lập tức để người dùng được chuyển hướng 
+      setCurrentUser(basicUser);
+      
+      // Sau đó, lấy thêm thông tin chi tiết từ API /api/auth/me và cập nhật lại state
+      // một cách bất đồng bộ để không làm chậm trải nghiệm người dùng
+      setTimeout(async () => {
+        try {
+          const detailedUser = await authService.getCurrentUser();
+          if (detailedUser) {
+            console.log('Updating user with detailed info from /api/auth/me');
+            setCurrentUser(detailedUser);
+          }
+        } catch (error) {
+          console.error('Failed to get detailed user info:', error);
+          // Không hiển thị lỗi này cho người dùng vì họ đã đăng nhập thành công
+        }
+      }, 0);
+      
+      return basicUser;
     } catch (error) {
       setError(error.message || 'Login failed');
+      // Đảm bảo lỗi được truyền đầy đủ với thông tin response
       throw error;
     }
   };
 
-  const register = async (name, email, phone, password) => {
+  const register = async (name, email, phone, password, username) => {
     setError(null);
     try {
-      // Tạo username dựa trên email hoặc sử dụng email làm username
-      const username = email.split('@')[0];
       const user = await authService.register(username, name, email, phone, password);
       return user;
     } catch (error) {

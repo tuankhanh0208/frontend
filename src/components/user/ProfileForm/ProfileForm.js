@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { FaEdit } from 'react-icons/fa';
+import { FaEdit, FaCamera } from 'react-icons/fa';
 import useUser from '../../../hooks/useUser';
 
 const FormContainer = styled.div`
@@ -44,12 +44,41 @@ const Avatar = styled.div`
   overflow: hidden;
   border: 2px solid #eee;
   transition: all 0.3s ease;
+  position: relative;
   
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+`;
+
+const AvatarOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  
+  &:hover {
+    opacity: 1;
+  }
+  
+  svg {
+    color: white;
+    font-size: 24px;
+  }
+`;
+
+const AvatarInput = styled.input`
+  display: none;
 `;
 
 const AvatarInfo = styled.div`
@@ -161,7 +190,9 @@ const SuccessMessage = styled.div`
 
 const ProfileForm = () => {
   const [success, setSuccess] = useState(false);
-  const { user, loading, updateUser } = useUser();
+  const [avatarMessage, setAvatarMessage] = useState('');
+  const { user, loading, updateUser, updateAvatar } = useUser();
+  const fileInputRef = useRef(null);
   
   // Form validation schema
   const validationSchema = Yup.object({
@@ -204,16 +235,65 @@ const ProfileForm = () => {
       setSubmitting(false);
     }
   };
+
+  // Handle avatar upload
+  const handleAvatarClick = () => {
+    fileInputRef.current.click();
+  };
+  
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      setAvatarMessage('Định dạng ảnh không hợp lệ. Vui lòng chọn ảnh JPEG hoặc PNG.');
+      return;
+    }
+    
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarMessage('Kích thước ảnh quá lớn. Giới hạn 2MB.');
+      return;
+    }
+    
+    try {
+      setAvatarMessage('Đang tải lên...');
+      const success = await updateAvatar(file);
+      
+      if (success) {
+        setAvatarMessage('Cập nhật ảnh đại diện thành công!');
+        setTimeout(() => {
+          setAvatarMessage('');
+        }, 3000);
+      } else {
+        setAvatarMessage('Không thể cập nhật ảnh đại diện.');
+      }
+    } catch (error) {
+      console.error('Avatar update failed:', error);
+      setAvatarMessage('Không thể cập nhật ảnh đại diện.');
+    }
+  };
   
   if (loading) {
     return <div>Đang tải...</div>;
   }
+
+  // Determine avatar URL
+  const avatarUrl = user?.avatar_url || 'https://via.placeholder.com/100';
 
   return (
     <FormContainer>
       {success && (
         <SuccessMessage>
           Thông tin của bạn đã được cập nhật thành công.
+        </SuccessMessage>
+      )}
+      
+      {avatarMessage && (
+        <SuccessMessage style={{ color: avatarMessage.includes('thành công') ? '#4CAF50' : '#d32f2f' }}>
+          {avatarMessage}
         </SuccessMessage>
       )}
       
@@ -227,17 +307,27 @@ const ProfileForm = () => {
           <Form>
             <AvatarSection>
               <Avatar>
-                <img src="https://via.placeholder.com/100" alt="User Avatar" />
+                <img src={avatarUrl} alt="User Avatar" />
+                <AvatarOverlay onClick={handleAvatarClick}>
+                  <FaCamera />
+                </AvatarOverlay>
+                <AvatarInput 
+                  type="file" 
+                  ref={fileInputRef}
+                  accept="image/jpeg, image/png"
+                  onChange={handleAvatarChange}
+                />
               </Avatar>
               <AvatarInfo>
                 <p>Chọn Ảnh</p>
                 <p>Định dạng file: .JPEG, .PNG</p>
+                <p>Kích thước tối đa: 2MB</p>
               </AvatarInfo>
             </AvatarSection>
             
             <FormHeader>
               <h3>Tên đăng nhập</h3>
-              <span>vannamdang93</span>
+              <span>{user?.username || 'vannamdang93'}</span>
             </FormHeader>
             
             <FormRow>
@@ -284,11 +374,11 @@ const ProfileForm = () => {
                 <ErrorMessage name="gender" component={ErrorText} />
               </FormGroup>
               
-              <FormGroup>
+              {/* <FormGroup>
                 <Label htmlFor="birthDate">Ngày Sinh</Label>
                 <Input type="date" id="birthDate" name="birthDate" />
                 <ErrorMessage name="birthDate" component={ErrorText} />
-              </FormGroup>
+              </FormGroup> */}
             </FormRow>
             
             <SubmitButton type="submit" disabled={isSubmitting}>

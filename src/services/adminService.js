@@ -7,11 +7,13 @@ import api from './api';
 const adminService = {
   /**
    * Lấy thống kê tổng hợp (Total Order, Total Revenue, Total Customer, Total Product)
+   * @param {boolean} bypassCache - Nếu true, sẽ bỏ qua cache bằng cách thêm timestamp
    * @returns {Promise<Object>} - Thống kê tổng hợp
    */
-  getDashboardStats: async () => {
+  getDashboardStats: async (bypassCache = false) => {
     try {
-      const response = await api.get('/api/admin/dashboard/stats');
+      const timestamp = bypassCache ? `?_t=${new Date().getTime()}` : '';
+      const response = await api.get(`/api/admin/dashboard/stats${timestamp}`);
       return response.data;
     } catch (error) {
       console.error('Lỗi khi lấy thống kê dashboard:', error);
@@ -22,11 +24,13 @@ const adminService = {
   /**
    * Lấy danh sách đơn hàng gần đây
    * @param {number} limit - Số lượng đơn hàng muốn lấy (mặc định: 10)
+   * @param {boolean} bypassCache - Nếu true, sẽ bỏ qua cache bằng cách thêm timestamp
    * @returns {Promise<Object>} - Danh sách đơn hàng gần đây
    */
-  getRecentOrders: async (limit = 10) => {
+  getRecentOrders: async (limit = 10, bypassCache = false) => {
     try {
-      const response = await api.get(`/api/admin/dashboard/recent-orders?limit=${limit}`);
+      const timestamp = bypassCache ? `&_t=${new Date().getTime()}` : '';
+      const response = await api.get(`/api/admin/dashboard/recent-orders?limit=${limit}${timestamp}`);
       return response.data;
     } catch (error) {
       console.error('Lỗi khi lấy đơn hàng gần đây:', error);
@@ -37,11 +41,13 @@ const adminService = {
   /**
    * Lấy thống kê doanh thu theo thời gian
    * @param {string} mode - Khoảng thời gian (daily, weekly, monthly, yearly)
+   * @param {boolean} bypassCache - Nếu true, sẽ bỏ qua cache bằng cách thêm timestamp
    * @returns {Promise<Object>} - Thống kê doanh thu theo thời gian
    */
-  getRevenueOverview: async (mode = 'monthly') => {
+  getRevenueOverview: async (mode = 'monthly', bypassCache = false) => {
     try {
-      const response = await api.get(`/api/admin/dashboard/revenue-overview?mode=${mode}`);
+      const timestamp = bypassCache ? `&_t=${new Date().getTime()}` : '';
+      const response = await api.get(`/api/admin/dashboard/revenue-overview?mode=${mode}${timestamp}`);
       return response.data;
     } catch (error) {
       console.error('Lỗi khi lấy tổng quan doanh thu:', error);
@@ -53,14 +59,15 @@ const adminService = {
    * Lấy tất cả thống kê dashboard (stats, recent orders, revenue) trong một lần gọi
    * @param {number} orderLimit - Số lượng đơn hàng muốn lấy (mặc định: 10)
    * @param {string} revenueMode - Khoảng thời gian (daily, weekly, monthly, yearly)
+   * @param {boolean} bypassCache - Nếu true, sẽ bỏ qua cache bằng cách thêm timestamp
    * @returns {Promise<Object>} - Tất cả thống kê dashboard
    */
-  getAllDashboardData: async (orderLimit = 10, revenueMode = 'monthly') => {
+  getAllDashboardData: async (orderLimit = 10, revenueMode = 'monthly', bypassCache = false) => {
     try {
       const [stats, recentOrders, revenueOverview] = await Promise.all([
-        adminService.getDashboardStats(),
-        adminService.getRecentOrders(orderLimit),
-        adminService.getRevenueOverview(revenueMode)
+        adminService.getDashboardStats(bypassCache),
+        adminService.getRecentOrders(orderLimit, bypassCache),
+        adminService.getRevenueOverview(revenueMode, bypassCache)
       ]);
       
       return {
@@ -169,4 +176,4 @@ const adminService = {
   }
 };
 
-export default adminService; 
+export default adminService;

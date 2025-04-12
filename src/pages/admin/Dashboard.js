@@ -1,12 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaTachometerAlt, FaUsers, FaShoppingBag, FaMoneyBillWave, FaChartLine } from 'react-icons/fa';
+import { FaTachometerAlt, FaUsers, FaShoppingBag, FaMoneyBillWave, FaChartLine, FaSyncAlt } from 'react-icons/fa';
 import AdminLayout from '../../layouts/AdminLayout';
 import adminService from '../../services/adminService';
 import RevenueChart from '../../components/admin/RevenueChart';
+import { toast } from 'react-toastify';
 
 const DashboardContainer = styled.div`
   padding: 20px;
+`;
+
+const DashboardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+`;
+
+const DashboardTitle = styled.h1`
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+`;
+
+const RefreshButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background-color: #45a049;
+  }
+  
+  &:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  svg {
+    transition: transform 0.5s ease;
+    transform: ${props => props.isLoading ? 'rotate(360deg)' : 'rotate(0)'};
+  }
 `;
 
 const StatsGrid = styled.div`
@@ -154,6 +195,7 @@ const RecentOrdersTable = styled.table`
 
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeRange, setTimeRange] = useState('monthly');
   const [dashboardData, setDashboardData] = useState({
     totalOrders: 0,
@@ -164,35 +206,61 @@ const Dashboard = () => {
     revenueData: []
   });
   
+  // Extract fetchDashboardData to a separate function so we can reuse it
+  const fetchDashboardData = async (forceRefresh = false) => {
+    setIsLoading(true);
+    try {
+      // Lấy thống kê dashboard
+      const stats = await adminService.getDashboardStats(forceRefresh);
+      // Lấy đơn hàng gần đây
+      const recentOrdersResponse = await adminService.getRecentOrders(5, forceRefresh);
+      // Lấy dữ liệu doanh thu
+      const revenueResponse = await adminService.getRevenueOverview(timeRange, forceRefresh);
+      
+      setDashboardData({
+        totalOrders: stats.total_orders,
+        totalRevenue: stats.total_revenue,
+        totalCustomers: stats.total_customers,
+        totalProducts: stats.total_products,
+        recentOrders: recentOrdersResponse.orders || [],
+        revenueData: revenueResponse.revenue_periods || []
+      });
+      return true;
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu dashboard:', error);
+      // Giữ nguyên dữ liệu cũ nếu có lỗi
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      try {
-        // Lấy thống kê dashboard
-        const stats = await adminService.getDashboardStats();
-        // Lấy đơn hàng gần đây
-        const recentOrdersResponse = await adminService.getRecentOrders(5);
-        // Lấy dữ liệu doanh thu
-        const revenueResponse = await adminService.getRevenueOverview(timeRange);
-        
-        setDashboardData({
-          totalOrders: stats.total_orders,
-          totalRevenue: stats.total_revenue,
-          totalCustomers: stats.total_customers,
-          totalProducts: stats.total_products,
-          recentOrders: recentOrdersResponse.orders || [],
-          revenueData: revenueResponse.revenue_periods || []
-        });
-      } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu dashboard:', error);
-        // Giữ nguyên dữ liệu cũ nếu có lỗi
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchDashboardData();
   }, [timeRange]);
+  
+  const handleRefreshData = async () => {
+    if (isRefreshing) return; // Prevent multiple refreshes at once
+    
+    setIsRefreshing(true);
+    toast.info("Đang làm mới dữ liệu...");
+    
+    try {
+      // Bypass cache by adding timestamp to requests (implemented in adminService)
+      const success = await fetchDashboardData(true);
+      
+      if (success) {
+        toast.success("Dữ liệu đã được cập nhật");
+      } else {
+        toast.error("Không thể cập nhật dữ liệu");
+      }
+    } catch (error) {
+      console.error("Lỗi khi làm mới dữ liệu:", error);
+      toast.error("Không thể cập nhật dữ liệu: " + error.message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
   
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -208,7 +276,19 @@ const Dashboard = () => {
   
   return (
       <DashboardContainer>
-        {isLoading ? (
+        <DashboardHeader>
+          <DashboardTitle>Dashboard</DashboardTitle>
+          <RefreshButton 
+            onClick={handleRefreshData} 
+            disabled={isLoading || isRefreshing}
+            isLoading={isRefreshing}
+          >
+            <FaSyncAlt className={isRefreshing ? "spin-animation" : ""} /> 
+            {isRefreshing ? "Đang làm mới..." : "Làm mới dữ liệu"}
+          </RefreshButton>
+        </DashboardHeader>
+        
+        {isLoading && !isRefreshing ? (
           <LoadingIndicator>Đang tải dữ liệu dashboard...</LoadingIndicator>
         ) : (
           <>

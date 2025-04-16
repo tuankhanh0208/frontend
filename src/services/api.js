@@ -3,24 +3,38 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { TOKEN_STORAGE } from './authService';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
   },
-  withCredentials: false // Thay đổi thành false để tránh lỗi CORS với credentials
 });
 
-// Add a request interceptor
+// Interceptor để xử lý request
 api.interceptors.request.use(
   (config) => {
-    // Lấy token từ cookie và thêm vào header Authorization
+    // Lấy token từ Cookies thay vì từ localStorage
     const token = Cookies.get(TOKEN_STORAGE.ACCESS_TOKEN);
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      // Thêm log để debug khi gọi API admin
+      if (config.url.includes('/api/admin/')) {
+        console.log('Admin API call with token:', `${token.substring(0, 10)}...`);
+      }
+    } else {
+      // Log khi không có token
+      if (config.url.includes('/api/admin/')) {
+        console.log('Admin API call WITHOUT token!');
+      }
+    }
+    
+    // Log request params khi gọi API lấy sản phẩm
+    if (config.url.includes('/api/e-commerce/products')) {
+      console.log('API Request URL:', config.url);
+      console.log('API Request Params:', config.params);
     }
     
     return config;
@@ -30,57 +44,52 @@ api.interceptors.request.use(
   }
 );
 
-// Add a response interceptor
+// Interceptor để xử lý response
 api.interceptors.response.use(
   (response) => {
+    // Log chi tiết dữ liệu trả về nếu là API sản phẩm
+    if (response.config.url.includes('/api/e-commerce/products')) {
+      console.log('===== API RESPONSE DATA =====');
+      console.log('API URL:', response.config.url);
+      
+      // Log số lượng kết quả hoặc chi tiết một sản phẩm
+      if (Array.isArray(response.data)) {
+        console.log('API Response Data Length:', response.data.length);
+        if (response.data.length > 0) {
+          console.log('First product sample:', JSON.stringify(response.data[0]));
+        }
+      } else if (response.data.products && Array.isArray(response.data.products)) {
+        console.log('API Response Products Length:', response.data.products.length);
+        if (response.data.products.length > 0) {
+          console.log('First product sample:', JSON.stringify(response.data.products[0]));
+        }
+      } else {
+        console.log('API Response Data:', JSON.stringify(response.data));
+      }
+      console.log('===== END API RESPONSE =====');
+    }
     return response;
   },
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // Xử lý lỗi 404 - Endpoint không tồn tại
-    if (error.response?.status === 404) {
-      console.error('API endpoint not found:', error.config.url);
-    }
-    
-    // If error is 401 (Unauthorized) and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        // Với cấu trúc mới, chúng ta không còn sử dụng refresh token
-        // Chuyển hướng người dùng đến trang đăng nhập
-        console.log('Token hết hạn, chuyển hướng đến trang đăng nhập');
+  (error) => {
+    // Xử lý lỗi response
+    if (error.response) {
+      // Xử lý lỗi 401 (Unauthorized) - đăng xuất người dùng
+      if (error.response.status === 401) {
+        // Xóa token khỏi cả localStorage và cookie để đảm bảo đồng bộ
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         
-        // Xóa token hiện tại từ cookie
-        // Import Cookies từ js-cookie để sử dụng
-        const Cookies = require('js-cookie');
-        Cookies.remove('accessToken', { path: '/' });
-        Cookies.remove('tokenExpiry', { path: '/' });
+        // Xóa token khỏi cookies
+        Cookies.remove(TOKEN_STORAGE.ACCESS_TOKEN, { path: '/' });
+        Cookies.remove(TOKEN_STORAGE.REFRESH_TOKEN, { path: '/' });
+        Cookies.remove(TOKEN_STORAGE.TOKEN_EXPIRY, { path: '/' });
         
-        // Chuyển hướng đến trang đăng nhập
-        window.location.href = '/login';
-        return Promise.reject(error);
-      } catch (refreshError) {
-        // Enhanced error logging for token refresh failures
-        console.error('Token refresh failed:', {
-          message: refreshError.message,
-          status: refreshError.response?.status,
-          data: refreshError.response?.data,
-          stack: refreshError.stack
-        });
+        console.log('Unauthorized error: Removed tokens from both localStorage and cookies');
         
-        // If refresh token is invalid, clear cookies and redirect to login
-        const Cookies = require('js-cookie');
-        Cookies.remove('accessToken', { path: '/' });
-        Cookies.remove('refreshToken', { path: '/' });
-        Cookies.remove('tokenExpiry', { path: '/' });
-        
-        // Redirect to login page
-        window.location.href = '/login';
+        // Redirect to login page if needed
+        // window.location.href = '/login';
       }
     }
-    
     return Promise.reject(error);
   }
 );

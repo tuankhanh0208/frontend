@@ -1,12 +1,13 @@
-
 // src/pages/ProductDetail.js
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaStar, FaShoppingCart, FaHeart, FaShareAlt, FaMinus, FaPlus, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import MainLayout from '../layouts/MainLayout';
 import Button from '../components/common/Button/Button';
 import ProductCard from '../components/common/ProductCard/ProductCard';
+import ReviewFilter from '../components/common/ReviewFilter/ReviewFilter';
+import ReviewItem from '../components/common/ReviewItem/ReviewItem';
 import { CartContext } from '../context/CartContext';
 import productService from '../services/productService';
 
@@ -352,6 +353,7 @@ const SectionTitle = styled.h2`
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { addToCart } = useContext(CartContext);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -361,23 +363,88 @@ const ProductDetail = () => {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [expandedFaqs, setExpandedFaqs] = useState({});
   
+  // State cho đánh giá
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState(null);
+  const [reviewStats, setReviewStats] = useState({
+    averageRating: 0,
+    totalReviews: 0,
+    ratingCounts: [0, 0, 0, 0, 0]
+  });
+  
+  // State cho bộ lọc đánh giá
+  const [reviewFilters, setReviewFilters] = useState({
+    ratings: [],
+    withImages: false,
+    withVideos: false,
+    verified: false,
+    filterType: 'all',
+    page: 1,
+    limit: 5
+  });
+  
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setLoading(true);
         const data = await productService.getProductById(id);
+        
+        // Log dữ liệu sản phẩm để kiểm tra
+        console.log('ProductDetail: Dữ liệu sản phẩm từ API:', {
+          id: data.id,
+          name: data.name,
+          original_price: data.original_price,
+          price: data.price,
+          originalPrice: data.originalPrice,
+          discountPrice: data.discountPrice,
+          category: data.category
+        });
+        
+        // Đảm bảo thông tin danh mục đầy đủ
+        if (data.category && (!data.category.category_id || !data.category.name)) {
+          console.log('ProductDetail: Thông tin danh mục không đầy đủ, đang sửa lỗi', data.category);
+          
+          // Nếu không có name nhưng có category_id, thử lấy thông tin danh mục từ API
+          if (data.category.category_id && !data.category.name) {
+            try {
+              // Đây là phần giả định, thay thế bằng logic thực tế của bạn để lấy tên danh mục
+              data.category.name = 'Danh mục ' + data.category.category_id;
+            } catch (err) {
+              console.error('Lỗi khi lấy tên danh mục:', err);
+            }
+          }
+        }
+        
         setProduct(data);
         setActiveImage(0);
         
-        // Fetch related products
-        const related = await productService.getProducts({ 
-          category: data.categoryId,
-          limit: 4,
-          exclude: data.id
-        });
-        setRelatedProducts(related);
+        try {
+          console.log(`Đang lấy sản phẩm liên quan cho sản phẩm ID ${id}`);
+          
+          // Gọi API mới để lấy sản phẩm liên quan, chỉ cần truyền ID sản phẩm hiện tại
+          const relatedProductsData = await productService.getRelatedProducts(id, 4);
+          
+          if (relatedProductsData && relatedProductsData.length > 0) {
+            console.log(`Đã lấy thành công ${relatedProductsData.length} sản phẩm liên quan`);
+            console.log('Thông tin sản phẩm liên quan:', relatedProductsData.map(p => ({
+              id: p.id,
+              name: p.name,
+              image: p.image || '[Không có]',
+              images: p.images || '[Không có]'
+            })));
+            setRelatedProducts(relatedProductsData);
+          } else {
+            console.log('Không tìm thấy sản phẩm liên quan');
+            setRelatedProducts([]);
+          }
+        } catch (relatedError) {
+          console.error('Lỗi khi lấy sản phẩm liên quan:', relatedError);
+          setRelatedProducts([]);
+        }
       } catch (error) {
-        console.error('Failed to fetch product:', error);
+        console.error('Lỗi khi lấy thông tin sản phẩm:', error);
+        setRelatedProducts([]);
       } finally {
         setLoading(false);
       }
@@ -385,6 +452,69 @@ const ProductDetail = () => {
     
     fetchProduct();
   }, [id]);
+  
+  // Lấy đánh giá khi cần
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!id || activeTab !== 'reviews') return;
+      
+      try {
+        setReviewsLoading(true);
+        setReviewsError(null);
+        
+        // Chuẩn bị các tham số bộ lọc cho API
+        const apiParams = {
+          page: reviewFilters.page,
+          limit: reviewFilters.limit
+        };
+        
+        // Thêm bộ lọc rating nếu có
+        if (reviewFilters.ratings.length > 0) {
+          apiParams.ratings = reviewFilters.ratings.join(',');
+        }
+        
+        // Thêm các bộ lọc khác nếu được chọn
+        if (reviewFilters.withImages) {
+          apiParams.has_images = true;
+        }
+        
+        if (reviewFilters.withVideos) {
+          apiParams.has_videos = true;
+        }
+        
+        if (reviewFilters.verified) {
+          apiParams.verified = true;
+        }
+        
+        if (reviewFilters.filterType !== 'all') {
+          apiParams.filter_type = reviewFilters.filterType;
+        }
+        
+        const result = await productService.getProductReviews(id, apiParams);
+        setReviews(result.reviews);
+        setReviewStats({
+          averageRating: result.averageRating,
+          totalReviews: result.total,
+          ratingCounts: result.ratingCounts
+        });
+      } catch (error) {
+        console.error('Failed to fetch reviews:', error);
+        setReviewsError('Không thể tải đánh giá. Vui lòng thử lại sau.');
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    
+    fetchReviews();
+  }, [id, activeTab, reviewFilters]);
+  
+  const handleFilterChange = (filters) => {
+    setReviewFilters({
+      ...reviewFilters,
+      ...filters,
+      page: 1 // Reset về trang đầu tiên khi thay đổi bộ lọc
+    });
+  };
   
   const handleQuantityChange = (e) => {
     const value = parseInt(e.target.value);
@@ -416,10 +546,20 @@ const ProductDetail = () => {
     }));
   };
   
+  // Chuẩn bị trạng thái để khi quay lại trang danh mục
+  const handleGoBack = () => {
+    navigate(-1, { 
+      state: { 
+        fromProduct: true,
+        isBack: true // Thêm cờ để đánh dấu đây là hành động quay lại
+      } 
+    });
+  };
+  
   if (loading) {
     return (
       <MainLayout>
-        <p>Loading product details...</p>
+        <p>Đang tải thông tin sản phẩm...</p>
       </MainLayout>
     );
   }
@@ -427,14 +567,49 @@ const ProductDetail = () => {
   if (!product) {
     return (
       <MainLayout>
-        <p>Product not found</p>
+        <p>Không tìm thấy sản phẩm</p>
       </MainLayout>
     );
   }
   
-  const discountPercentage = product.discountPrice 
-    ? Math.round(((product.originalPrice - product.discountPrice) / product.originalPrice) * 100) 
+  // Chuẩn bị mảng ảnh và loại bỏ các undefined hoặc null
+  const productImages = product.images && product.images.length > 0 
+    ? product.images.filter(img => img) 
+    : [product.image].filter(img => img);
+  
+  // Tính tỉ lệ giảm giá dựa trên original_price và price từ API
+  const hasOriginalPrice = product.originalPrice || product.original_price;
+  const hasDiscountPrice = product.discountPrice || product.price;
+  const originalPrice = product.originalPrice || product.original_price || 0;
+  const discountPrice = product.price || 0;
+  // console.log('ProductDetail: Thông tin giảm giá:', {
+  //   hasOriginalPrice,
+  //   hasDiscountPrice,
+  //   originalPrice,
+  //   discountPrice  
+  // });
+  
+  // Sử dụng trường hasDiscount từ API nếu có, hoặc tự tính toán
+  const hasDiscount = product.hasDiscount !== undefined ? product.hasDiscount : 
+                     (hasOriginalPrice && hasDiscountPrice && originalPrice > discountPrice);
+                     
+  const discountPercentage = hasDiscount 
+    ? Math.round(((originalPrice - hasDiscountPrice) / originalPrice) * 100) 
     : 0;
+    
+  // Log để gỡ lỗi
+  console.log('ProductDetail: Thông tin giảm giá:', {
+    hasOriginalPrice,
+    hasDiscountPrice,
+    originalPrice,
+    discountPrice,
+    hasDiscount,
+    discountPercentage,
+    fromAPI_hasDiscount: product.hasDiscount
+  });
+  
+  // Kiểm tra xem có ảnh không
+  const hasImages = productImages && productImages.length > 0;
   
   return (
     <MainLayout>
@@ -442,15 +617,24 @@ const ProductDetail = () => {
         <BreadcrumbNav>
           <ul>
             <li><Link to="/">Trang chủ</Link></li>
-            <li><Link to={`/categories/${product.categoryId}`}>{product.category}</Link></li>
-            <li><Link to="#">{product.name}</Link></li>
+            <li><Link to="/categories">Danh mục</Link></li>
+            {product.category ? (
+              <li>
+                <Link 
+                  to={`/categories/${product.category.category_id || 'all'}`}
+                >
+                  {product.category.name || 'Tất cả sản phẩm'}
+                </Link>
+              </li>
+            ) : null}
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleGoBack(); }}>Quay lại</a></li>
           </ul>
         </BreadcrumbNav>
         
         <ProductDetailLayout>
           <ImageGallery>
             <Thumbnails>
-              {product.images.map((image, index) => (
+              {hasImages && productImages.map((image, index) => (
                 <img 
                   key={index}
                   src={image}
@@ -461,10 +645,16 @@ const ProductDetail = () => {
               ))}
             </Thumbnails>
             <MainImage>
-              <img 
-                src={product.images[activeImage]} 
-                alt={product.name} 
-              />
+              {hasImages ? (
+                <img 
+                  src={productImages[activeImage]} 
+                  alt={product.name} 
+                />
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', border: '1px dashed #ddd', background: '#f9f9f9' }}>
+                  <p>Không có hình ảnh</p>
+                </div>
+              )}
             </MainImage>
           </ImageGallery>
           
@@ -479,16 +669,16 @@ const ProductDetail = () => {
               </div>
               <span className="divider">|</span>
               <div className="stock">
-                {product.inStock ? 'In Stock' : 'Out of Stock'}
+                {product.inStock ? 'Còn hàng' : 'Hết hàng'}
               </div>
             </ProductMeta>
             
             <ProductPrice>
-              <span className="current">{product.discountPrice || product.originalPrice}đ</span>
-              {product.discountPrice && (
+              <span className="current">{Math.round(hasDiscountPrice || originalPrice).toLocaleString()}đ/{product.unit || 'kg'}</span>
+              {hasDiscount && (
                 <>
-                  <span className="original">{product.originalPrice}đ</span>
-                  <span className="discount">{discountPercentage}% OFF</span>
+                  <span className="original">{Math.round(originalPrice).toLocaleString()}đ</span>
+                  <span className="discount">{discountPercentage}% GIẢM</span>
                 </>
               )}
             </ProductPrice>
@@ -577,35 +767,39 @@ const ProductDetail = () => {
             
             {activeTab === 'reviews' && (
               <ReviewSection>
-                {product.reviews && product.reviews.length > 0 ? (
-                  product.reviews.map((review, index) => (
-                    <Review key={index}>
-                      <ReviewHeader>
-                        <span className="user">{review.user}</span>
-                        <span className="date">{review.date}</span>
-                      </ReviewHeader>
-                      <ReviewRating>
-                        {[...Array(5)].map((_, i) => (
-                          <FaStar key={i} color={i < review.rating ? "#FFD700" : "#e4e5e9"} />
-                        ))}
-                      </ReviewRating>
-                      <ReviewContent>{review.content}</ReviewContent>
-                    </Review>
+                <ReviewFilter 
+                  averageRating={reviewStats.averageRating || product.rating} 
+                  totalReviews={reviewStats.totalReviews || product.reviewCount} 
+                  ratingCounts={reviewStats.ratingCounts} 
+                  onFilterChange={handleFilterChange}
+                />
+                
+                {reviewsLoading ? (
+                  <p>Đang tải đánh giá...</p>
+                ) : reviewsError ? (
+                  <p>{reviewsError}</p>
+                ) : reviews.length > 0 ? (
+                  reviews.map((review) => (
+                    <ReviewItem 
+                      key={review.review_id} 
+                      review={review} 
+                      productId={product.id}
+                    />
                   ))
                 ) : (
-                  <p>No reviews yet. Be the first to review this product!</p>
+                  <p>Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá sản phẩm này!</p>
                 )}
               </ReviewSection>
             )}
             
             {activeTab === 'shipping' && (
               <div>
-                <p>Shipping information for this product:</p>
+                <p>Thông tin vận chuyển cho sản phẩm này:</p>
                 <ul>
-                  <li>Free shipping for orders over 200.000đ</li>
-                  <li>Standard shipping: 2-3 business days</li>
-                  <li>Express shipping: 1 business day (additional fee)</li>
-                  <li>Returns accepted within 30 days of purchase</li>
+                  <li>Miễn phí vận chuyển cho đơn hàng trên 200.000đ</li>
+                  <li>Vận chuyển tiêu chuẩn: 2-3 ngày làm việc</li>
+                  <li>Vận chuyển nhanh: 1 ngày làm việc (phí bổ sung)</li>
+                  <li>Chấp nhận đổi trả trong vòng 30 ngày kể từ ngày mua</li>
                 </ul>
               </div>
             )}
@@ -614,11 +808,15 @@ const ProductDetail = () => {
         
         <RelatedProducts>
           <SectionTitle>Sản phẩm liên quan</SectionTitle>
-          <ProductGrid>
-            {relatedProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </ProductGrid>
+          {relatedProducts.length > 0 ? (
+            <ProductGrid>
+              {relatedProducts.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </ProductGrid>
+          ) : (
+            <p>Không có sản phẩm liên quan</p>
+          )}
         </RelatedProducts>
       </ProductContainer>
     </MainLayout>

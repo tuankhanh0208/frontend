@@ -10,6 +10,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ChatProvider } from './context/ChatContext';
+import { CategoryProvider } from './context/CategoryContext';
 import ChatWindow from './components/chat/ChatWindow/ChatWindow';
 import ChatButton from './components/chat/ChatButton/ChatButton';
 import ProductSelector from './components/chat/ProductSelector/ProductSelector';
@@ -57,101 +58,104 @@ const App = () => {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <CartProvider>
-              <ChatProvider>
-                <ToastContainer position="top-right" autoClose={3000} />
-                <Routes>
-                  {/* Public Routes */}
-                  <Route path="/" element={<Home />} />
-                  <Route path="/categories" element={<CategoryList />} />
-                  <Route path="/categories/:id" element={<CategoryProducts />} />
-                  <Route path="/categories/:id/:slug" element={<CategoryProducts />} />
-                  <Route path="/products/:id" element={<ProductDetail />} />
-                  <Route path="/search" element={<SearchResults />} />
-                  <Route path="/cart" element={<Cart />} />
-                  
-                  {/* Auth Routes */}
-                  <Route path="/login" element={
-                    <AuthLayout>
-                      <Login />
-                    </AuthLayout>
-                  } />
-                  <Route path="/register" element={
-                    <AuthLayout>
-                      <Register />
-                    </AuthLayout>
-                  } />
-                  <Route path="/forgot-password" element={
-                    <AuthLayout>
-                      <ForgotPassword />
-                    </AuthLayout>
-                  } />
-                  
-                  {/* Protected User Routes */}
-                  <Route path="/checkout" element={
-                    <PrivateRoute>
-                      <Checkout />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/payment-success" element={
-                    <PrivateRoute>
-                      <PaymentSuccess />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/profile" element={
-                    <PrivateRoute>
-                      <Profile />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/orders" element={
-                    <PrivateRoute>
-                      <Orders />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/orders/:id" element={
-                    <PrivateRoute>
-                      <OrderDetail />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/wishlist" element={
-                    <PrivateRoute>
-                      <Wishlist />
-                    </PrivateRoute>
-                  } />
-                  
-                  {/* Admin Routes */}
-                  <Route path="/admin" element={
-                    <AdminRoute>
-                      <AdminDashboard />
-                    </AdminRoute>
-                  } />
-                  <Route path="/admin/users" element={
-                    <AdminRoute>
-                      <AdminUsers />
-                    </AdminRoute>
-                  } />
-                  <Route path="/admin/products" element={
-                    <AdminRoute>
-                      <AdminProducts />
-                    </AdminRoute>
-                  } />
-                  <Route path="/admin/orders" element={
-                    <AdminRoute>
-                      <AdminOrders />
-                    </AdminRoute>
-                  } />
-                  <Route path="/admin/categories" element={
-                    <AdminRoute>
-                      <AdminCategories />
-                    </AdminRoute>
-                  } />
-                  
-                  {/* 404 Route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <ChatButton />
-                <ChatWindow />
-                <ProductSelector />
-              </ChatProvider>
+              <CategoryProvider>
+                <ChatProvider>
+                  <ToastContainer position="top-right" autoClose={3000} />
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/" element={<Home />} />
+                    <Route path="/categories" element={<CategoryList />} />
+                    <Route path="/categories/:id" element={<CategoryProducts />} />
+                    <Route path="/categories/:id/:slug" element={<CategoryProducts />} />
+                    <Route path="/products/:id" element={<ProductDetail />} />
+                    <Route path="/product/:id" element={<ProductDetail />} />
+                    <Route path="/search" element={<SearchResults />} />
+                    <Route path="/cart" element={<Cart />} />
+                    
+                    {/* Auth Routes */}
+                    <Route path="/login" element={
+                      <AuthLayout>
+                        <Login />
+                      </AuthLayout>
+                    } />
+                    <Route path="/register" element={
+                      <AuthLayout>
+                        <Register />
+                      </AuthLayout>
+                    } />
+                    <Route path="/forgot-password" element={
+                      <AuthLayout>
+                        <ForgotPassword />
+                      </AuthLayout>
+                    } />
+                    
+                    {/* Protected User Routes */}
+                    <Route path="/checkout" element={
+                      <PrivateRoute>
+                        <Checkout />
+                      </PrivateRoute>
+                    } />
+                    <Route path="/payment-success" element={
+                      <PrivateRoute>
+                        <PaymentSuccess />
+                      </PrivateRoute>
+                    } />
+                    <Route path="/profile" element={
+                      <PrivateRoute>
+                        <Profile />
+                      </PrivateRoute>
+                    } />
+                    <Route path="/orders" element={
+                      <PrivateRoute>
+                        <Orders />
+                      </PrivateRoute>
+                    } />
+                    <Route path="/orders/:id" element={
+                      <PrivateRoute>
+                        <OrderDetail />
+                      </PrivateRoute>
+                    } />
+                    <Route path="/wishlist" element={
+                      <PrivateRoute>
+                        <Wishlist />
+                      </PrivateRoute>
+                    } />
+                    
+                    {/* Admin Routes */}
+                    <Route path="/admin" element={
+                      <AdminRoute>
+                        <AdminDashboard />
+                      </AdminRoute>
+                    } />
+                    <Route path="/admin/users" element={
+                      <AdminRoute>
+                        <AdminUsers />
+                      </AdminRoute>
+                    } />
+                    <Route path="/admin/products" element={
+                      <AdminRoute>
+                        <AdminProducts />
+                      </AdminRoute>
+                    } />
+                    <Route path="/admin/orders" element={
+                      <AdminRoute>
+                        <AdminOrders />
+                      </AdminRoute>
+                    } />
+                    <Route path="/admin/categories" element={
+                      <AdminRoute>
+                        <AdminCategories />
+                      </AdminRoute>
+                    } />
+                    
+                    {/* 404 Route */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <ChatButton />
+                  <ChatWindow />
+                  <ProductSelector />
+                </ChatProvider>
+              </CategoryProvider>
             </CartProvider>
           </AuthProvider>
         </QueryClientProvider>

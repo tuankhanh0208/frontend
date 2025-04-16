@@ -14,6 +14,14 @@ const ButtonWrapper = styled.button`
   border: none;
   outline: none;
 
+  ${props => props.variant === 'primary' && css`
+    background-color: #4CAF50;
+    color: white;
+    &:hover {
+      background-color: #45a049;
+    }
+  `}
+
   ${props => props.variant === 'secondary' && css`
     background-color: #FF8C00;
     color: white;
@@ -54,10 +62,12 @@ const ButtonWrapper = styled.button`
       ${props.variant === 'text' && css`background-color: transparent;`}
     }
   `}
+`;
 
-  svg {
-    margin-right: ${props => props.iconOnly ? '0' : '8px'};
-  }
+const IconContainer = styled.span`
+  display: flex;
+  align-items: center;
+  margin-right: ${props => props.hasChildren ? '8px' : '0'};
 `;
 
 const Button = ({ 
@@ -67,6 +77,7 @@ const Button = ({
   disabled = false, 
   fullWidth = false, 
   iconOnly = false, 
+  leftIcon = null,
   type = 'button', 
   onClick,
   ...rest 
@@ -82,6 +93,11 @@ const Button = ({
       onClick={disabled ? undefined : onClick}
       {...rest}
     >
+      {leftIcon && (
+        <IconContainer hasChildren={children}>
+          {leftIcon}
+        </IconContainer>
+      )}
       {children}
     </ButtonWrapper>
   );

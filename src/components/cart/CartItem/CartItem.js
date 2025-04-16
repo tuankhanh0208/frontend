@@ -192,9 +192,9 @@ const CartItem = ({ item }) => {
         </Name>
         {item.variant && <Variant>Mô tả: {item.variant}</Variant>}
         <Price>
-          {item.discountPrice || item.price}đ
+          {Math.round(item.discountPrice || item.price).toLocaleString()}đ/{item.unit || 'kg'}
           {item.discountPrice && (
-            <span className="original">{item.price}đ</span>
+            <span className="original">{Math.round(item.price).toLocaleString()}đ</span>
           )}
         </Price>
       </Details>
@@ -220,7 +220,7 @@ const CartItem = ({ item }) => {
         </RemoveButton>
       </Actions>
       
-      <Subtotal>{subtotal}đ</Subtotal>
+      <Subtotal>{Math.round(subtotal).toLocaleString()}đ</Subtotal>
     </Item>
   );
 };

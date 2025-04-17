@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import AdminLayout from '../../layouts/AdminLayout';
-import { FaSearch, FaPlus } from 'react-icons/fa';
+import { FaSearch, FaPlus, FaFileExcel } from 'react-icons/fa';
 import { TbDots } from 'react-icons/tb';
 import adminService from '../../services/adminService';
 import { toast } from 'react-toastify';
 import AddProductModal from '../../components/admin/AddProductModal';
+import * as XLSX from 'xlsx';
 
 const Container = styled.div`
   padding: 20px;
@@ -19,6 +20,11 @@ const PageHeader = styled.div`
 `;
 
 const HeaderContent = styled.div``;
+
+const HeaderButtons = styled.div`
+  display: flex;
+  gap: 10px;
+`;
 
 const Title = styled.h1`
   font-size: 24px;
@@ -102,6 +108,29 @@ const AddButton = styled.button`
   }
 `;
 
+const ExportButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background-color: #217346;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  
+  svg {
+    margin-right: 8px;
+  }
+  
+  &:hover {
+    background-color: #1a5c38;
+  }
+`;
+
 const ColumnsButton = styled.button`
   display: flex;
   align-items: center;
@@ -123,7 +152,7 @@ const ProductsTable = styled.table`
   border-collapse: collapse;
   background-color: white;
   border-radius: 5px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
@@ -175,8 +204,8 @@ const StatusCell = styled.td`
     border-radius: 4px;
     font-size: 12px;
     font-weight: 500;
-    background-color: ${props => props.status === 'Mới' ? 'rgba(76, 175, 80, 0.1)' : '#f5f5f5'};
-    color: ${props => props.status === 'Mới' ? '#4CAF50' : '#333'};
+    background-color: ${props => props.status === 'Nổi bật' ? 'rgba(76, 175, 80, 0.1)' : '#f5f5f5'};
+    color: ${props => props.status === 'Nổi bật' ? '#4CAF50' : '#333'};
   }
 `;
 
@@ -185,85 +214,150 @@ const ActionButton = styled.button`
   border: none;
   cursor: pointer;
   color: #333;
-  font-size: 16px;
-  padding: 5px;
+  font-size: 18px;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  position: relative;
   
   &:hover {
     color: #4CAF50;
+    background-color: rgba(76, 175, 80, 0.1);
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
   }
 `;
 
-const Pagination = styled.div`
+const PaginationContainer = styled.div`
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 20px;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 30px;
+  
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 `;
 
 const PageInfo = styled.div`
   color: #666;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  span {
+    font-weight: 500;
+    color: #333;
+  }
 `;
 
 const PageControls = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  
+  @media (min-width: 768px) {
+    justify-content: flex-end;
+  }
 `;
 
 const PageButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid ${props => props.active ? '#4CAF50' : '#e0e0e0'};
+  border-radius: 8px;
   background-color: ${props => props.active ? '#4CAF50' : 'white'};
   color: ${props => props.active ? 'white' : '#333'};
   cursor: pointer;
+  transition: all 0.2s;
+  font-weight: ${props => props.active ? '600' : '400'};
   
   &:hover {
-    background-color: ${props => props.active ? '#4CAF50' : '#f5f5f5'};
+    background-color: ${props => props.active ? '#43A047' : '#f5f5f5'};
+    border-color: ${props => props.active ? '#43A047' : '#ccc'};
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   }
   
   &:disabled {
     cursor: not-allowed;
     opacity: 0.5;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  &.control {
+    font-size: 16px;
+    color: #555;
   }
 `;
 
 const ActionMenu = styled.div`
   position: relative;
+  z-index: 10;
 `;
 
 const ActionMenuDropdown = styled.div`
   position: absolute;
-  top: 100%;
+  top: auto;
+  bottom: ${props => props.showAbove ? 'calc(100% + 5px)' : 'auto'};
   right: 0;
+  top: ${props => props.showAbove ? 'auto' : 'calc(100% + 5px)'};
   width: 150px;
   background-color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
   overflow: hidden;
-  z-index: 10;
+  z-index: 100;
+  transform-origin: ${props => props.showAbove ? 'bottom right' : 'top right'};
+  animation: dropdown 0.2s ease-out;
+  
+  @keyframes dropdown {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
   
   button {
     width: 100%;
     text-align: left;
-    padding: 10px 15px;
+    padding: 12px 15px;
     border: none;
     background-color: transparent;
     cursor: pointer;
     font-size: 14px;
     color: #333;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
     
     &:hover {
       background-color: #f5f5f5;
+      color: #4CAF50;
     }
     
     &.delete {
       color: #F44336;
+      
+      &:hover {
+        background-color: rgba(244, 67, 54, 0.1);
+      }
     }
   }
 `;
@@ -276,53 +370,147 @@ const ProductList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const itemsPerPage = 10;
+  const [menuPositions, setMenuPositions] = useState({});
+  const actionButtonRefs = useRef({});
 
-  // Mocked products data - Replace this with actual API call in a real application
+  // Fetch categories for filter
   useEffect(() => {
-    // Sample data based on the image
-    const mockProducts = [
-      { id: 1, name: 'Vision Blind Guard', price: 125.00, originalPrice: 85.00, quantity: 200, category: 'Rau', size: '300g', condition: 'Mới', date: '04/18/2025' },
-      { id: 2, name: 'Vision Blind Guard', price: 125.00, originalPrice: 85.00, quantity: 200, category: 'Rau', size: '300g', condition: 'Mới', date: '04/18/2025' },
-      { id: 3, name: 'Vision Blind Guard', price: 125.00, originalPrice: 85.00, quantity: 200, category: 'Rau', size: '300g', condition: 'Mới', date: '04/18/2025' },
-      { id: 4, name: 'Vision Blind Guard', price: 125.00, originalPrice: 85.00, quantity: 200, category: 'Rau', size: '300g', condition: 'Mới', date: '04/18/2025' },
-      { id: 5, name: 'Vision Blind Guard', price: 125.00, originalPrice: 85.00, quantity: 200, category: 'Rau', size: '300g', condition: 'Mới', date: '04/18/2025' },
-      { id: 6, name: 'Vision Blind Guard', price: 125.00, originalPrice: 85.00, quantity: 200, category: 'Rau', size: '300g', condition: 'Mới', date: '04/18/2025' },
-    ];
-
-    setProducts(mockProducts);
-    setLoading(false);
-    setTotalPages(1); // For demo purposes
+    const fetchCategories = async () => {
+      try {
+        const response = await adminService.getCategories(0, 100);
+        setCategories(response.items || []);
+      } catch (error) {
+        console.error('Lỗi khi lấy danh mục:', error);
+        toast.error('Không thể tải danh mục sản phẩm');
+      }
+    };
+    
+    fetchCategories();
   }, []);
 
+  // Fetch products with filters
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        // Calculate pagination skip
+        const skip = (currentPage - 1) * itemsPerPage;
+
+        // Create filter params
+        let categoryId = null;
+        if (categoryFilter) categoryId = parseInt(categoryFilter);
+        
+        // Xử lý lọc theo trạng thái
+        let stockFilter = null;
+        if (statusFilter === 'instock') {
+          stockFilter = 'available';
+        } else if (statusFilter === 'outofstock') {
+          stockFilter = 'unavailable';
+        }
+
+        // Fetch products from API
+        const response = await adminService.getProducts(
+          skip,
+          itemsPerPage,
+          categoryId,
+          searchTerm || null,
+          stockFilter
+        );
+
+        console.log('Sản phẩm đã tải:', response.items);
+        
+        // Sử dụng dữ liệu trả về trực tiếp (đã có category_name)
+        setProducts(response.items || []);
+        setTotalItems(response.total);
+        setTotalPages(Math.ceil(response.total / itemsPerPage));
+      } catch (error) {
+        console.error('Lỗi khi tải danh sách sản phẩm:', error);
+        toast.error('Không thể tải danh sách sản phẩm');
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [currentPage, searchTerm, categoryFilter, statusFilter, categories]);
+
   const handleAddProduct = () => {
+    setEditingProduct(null);
     setIsModalOpen(true);
+  };
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setIsModalOpen(true);
+    setActionMenuOpen(null);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setEditingProduct(null);
   };
 
   const handleSaveProduct = async (productData) => {
     try {
-      // Đây sẽ là nơi gọi API để lưu sản phẩm
-      console.log('Saving product:', productData);
-      toast.success('Sản phẩm đã được thêm thành công!');
+      let savedProduct;
       
-      // Ở đây bạn có thể làm mới danh sách sản phẩm
-      // const updatedProducts = await adminService.getProducts();
-      // setProducts(updatedProducts);
+      if (editingProduct) {
+        // Update existing product
+        savedProduct = await adminService.updateProduct(editingProduct.product_id, productData);
+        toast.success('Sản phẩm đã được cập nhật thành công!');
+      } else {
+        // Create new product
+        savedProduct = await adminService.addProduct(productData);
+        toast.success('Sản phẩm đã được thêm thành công!');
+      }
+      
+      // Refresh product list
+      const skip = (currentPage - 1) * itemsPerPage;
+      const categoryId = categoryFilter ? parseInt(categoryFilter) : null;
+      
+      // Xử lý lọc theo trạng thái
+      let stockFilter = null;
+      if (statusFilter === 'instock') {
+        stockFilter = 'available';
+      } else if (statusFilter === 'outofstock') {
+        stockFilter = 'unavailable';
+      }
+      
+      const response = await adminService.getProducts(
+        skip,
+        itemsPerPage,
+        categoryId,
+        searchTerm || null,
+        stockFilter
+      );
+      
+      // Sử dụng dữ liệu trả về trực tiếp
+      setProducts(response.items || []);
+      setTotalItems(response.total);
+      setTotalPages(Math.ceil(response.total / itemsPerPage));
+      
+      return savedProduct;
     } catch (error) {
       console.error('Lỗi khi lưu sản phẩm:', error);
-      toast.error('Đã xảy ra lỗi khi thêm sản phẩm.');
+      toast.error('Đã xảy ra lỗi khi lưu sản phẩm.');
       throw error;
     }
   };
 
   const handleEdit = (productId) => {
-    toast.info(`Chỉnh sửa sản phẩm ID: ${productId}`);
-    setActionMenuOpen(null);
+    const product = products.find(p => p.product_id === productId);
+    if (product) {
+      handleEditProduct(product);
+    } else {
+      toast.error(`Không tìm thấy sản phẩm ID: ${productId}`);
+    }
   };
 
   const handleCopyId = (productId) => {
@@ -331,20 +519,172 @@ const ProductList = () => {
     setActionMenuOpen(null);
   };
 
-  const handleDelete = (productId) => {
+  const handleDelete = async (productId) => {
     const confirmDelete = window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?');
     if (confirmDelete) {
-      toast.success(`Đã xóa sản phẩm ID: ${productId}`);
-      setProducts(products.filter(product => product.id !== productId));
+      try {
+        await adminService.deleteProduct(productId);
+        toast.success(`Đã xóa sản phẩm ID: ${productId}`);
+        
+        // Refresh product list
+        const skip = (currentPage - 1) * itemsPerPage;
+        const categoryId = categoryFilter ? parseInt(categoryFilter) : null;
+        
+        // Xử lý lọc theo trạng thái
+        let stockFilter = null;
+        if (statusFilter === 'instock') {
+          stockFilter = 'available';
+        } else if (statusFilter === 'outofstock') {
+          stockFilter = 'unavailable';
+        }
+        
+        const response = await adminService.getProducts(
+          skip,
+          itemsPerPage,
+          categoryId,
+          searchTerm || null,
+          stockFilter
+        );
+        
+        // Sử dụng dữ liệu trả về trực tiếp
+        setProducts(response.items || []);
+        setTotalItems(response.total);
+        setTotalPages(Math.ceil(response.total / itemsPerPage));
+      } catch (error) {
+        console.error(`Lỗi khi xóa sản phẩm ID ${productId}:`, error);
+        toast.error('Đã xảy ra lỗi khi xóa sản phẩm.');
+      }
     }
     setActionMenuOpen(null);
   };
 
-  const toggleActionMenu = (productId) => {
+  const checkMenuPosition = (productId) => {
+    if (actionButtonRefs.current[productId]) {
+      const buttonRect = actionButtonRefs.current[productId].getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const spaceBelow = windowHeight - buttonRect.bottom;
+      
+      // Nếu khoảng trống phía dưới < 150px (chiều cao ước tính của menu), hiển thị menu phía trên
+      const showAbove = spaceBelow < 150;
+      
+      setMenuPositions(prev => ({
+        ...prev,
+        [productId]: showAbove
+      }));
+    }
+  };
+
+  const toggleActionMenu = (productId, event) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    // Kiểm tra vị trí trước khi mở menu
+    setTimeout(() => {
+      checkMenuPosition(productId);
+    }, 0);
+    
     if (actionMenuOpen === productId) {
       setActionMenuOpen(null);
     } else {
       setActionMenuOpen(productId);
+    }
+  };
+
+  const handleMenuAction = (action, productId, event) => {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    
+    if (action === 'edit') {
+      handleEdit(productId);
+    } else if (action === 'copy') {
+      handleCopyId(productId);
+    } else if (action === 'delete') {
+      handleDelete(productId);
+    }
+    
+    setActionMenuOpen(null);
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setCurrentPage(1); // Về trang đầu tiên khi tìm kiếm
+  };
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Thêm xử lý đóng menu khi click bên ngoài
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (actionMenuOpen !== null && !event.target.closest('.action-menu')) {
+        setActionMenuOpen(null);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [actionMenuOpen]);
+
+  const exportToExcel = async () => {
+    try {
+      // Hiển thị thông báo đang tải
+      toast.info('Đang chuẩn bị dữ liệu xuất...');
+      
+      // Lấy tất cả sản phẩm để xuất (không phân trang)
+      const response = await adminService.getProducts(
+        0,
+        1000, // Lấy số lượng lớn để có thể xuất tất cả
+        categoryFilter ? parseInt(categoryFilter) : null,
+        searchTerm || null,
+        statusFilter === 'instock' ? 'available' : 
+        statusFilter === 'outofstock' ? 'unavailable' : null
+      );
+      
+      // Tạo dữ liệu cho file Excel
+      const productsData = response.items.map(product => ({
+        'ID': product.product_id,
+        'Tên sản phẩm': product.name,
+        'Giá bán': product.price,
+        'Giá gốc': product.original_price,
+        'Số lượng': product.stock_quantity,
+        'Danh mục': product.category_name || 'N/A',
+        'Đơn vị': product.unit || 'N/A',
+        'Trạng thái': product.stock_quantity > 0 ? 'Còn hàng' : 'Hết hàng',
+        'Ngày tạo': new Date(product.created_at).toLocaleDateString('vi-VN')
+      }));
+      
+      // Tạo workbook
+      const worksheet = XLSX.utils.json_to_sheet(productsData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sản phẩm");
+      
+      // Tự động điều chỉnh độ rộng cột
+      const maxWidth = productsData.reduce((acc, product) => {
+        Object.keys(product).forEach(key => {
+          const length = product[key] ? product[key].toString().length : 0;
+          acc[key] = Math.max(acc[key] || 0, length);
+        });
+        return acc;
+      }, {});
+      
+      worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: maxWidth[key] + 2 }));
+      
+      // Xuất file
+      const fileName = `danh-sach-san-pham-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      toast.success('Xuất dữ liệu thành công');
+    } catch (error) {
+      console.error('Lỗi khi xuất dữ liệu:', error);
+      toast.error('Đã xảy ra lỗi khi xuất dữ liệu');
     }
   };
 
@@ -353,9 +693,14 @@ const ProductList = () => {
       <HeaderContent>
         <PageHeader>
           <Title>Sản phẩm</Title>
-          <AddButton onClick={handleAddProduct}>
-            <FaPlus /> Thêm sản phẩm
-          </AddButton>
+          <HeaderButtons>
+            <ExportButton onClick={exportToExcel}>
+              <FaFileExcel /> Xuất Excel
+            </ExportButton>
+            <AddButton onClick={handleAddProduct}>
+              <FaPlus /> Thêm sản phẩm
+            </AddButton>
+          </HeaderButtons>
         </PageHeader>
         <Description>
           Quản lý sản phẩm và theo dõi việc bổ sung hàng tại đây.
@@ -363,42 +708,54 @@ const ProductList = () => {
       </HeaderContent>
 
       <SearchFilter>
-        <SearchInput>
-          <FaSearch />
-          <input
-            type="text"
-            placeholder="Tìm kiếm ..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </SearchInput>
+        <form onSubmit={handleSearch}>
+          <SearchInput>
+            <FaSearch />
+            <input
+              type="text"
+              placeholder="Tìm kiếm ..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </SearchInput>
+        </form>
 
         <FilterDropdown
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
-          <option value="">Status</option>
+          <option value="">Trạng thái tồn kho</option>
           <option value="instock">Còn hàng</option>
           <option value="outofstock">Hết hàng</option>
         </FilterDropdown>
 
         <FilterDropdown
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
+          onChange={(e) => {
+            setCategoryFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
-          <option value="">Category</option>
-          <option value="rau">Rau</option>
-          <option value="cu">Củ</option>
-          <option value="qua">Quả</option>
+          <option value="">Danh mục</option>
+          {categories.map(category => (
+            <option key={category.category_id} value={category.category_id}>
+              {category.name}
+            </option>
+          ))}
         </FilterDropdown>
 
         <ColumnsButton>
-          Columns
+          Cột hiển thị
         </ColumnsButton>
       </SearchFilter>
 
       {loading ? (
         <p>Đang tải dữ liệu...</p>
+      ) : products.length === 0 ? (
+        <p>Không có sản phẩm nào phù hợp với tiêu chí tìm kiếm.</p>
       ) : (
         <>
           <ProductsTable>
@@ -408,37 +765,50 @@ const ProductList = () => {
                 <th>Giá bán</th>
                 <th>Giá gốc</th>
                 <th>Số lượng</th>
-                <th>Category</th>
-                <th>Size</th>
-                <th>Condition</th>
-                <th>Date</th>
-                <th></th>
+                <th>Danh mục</th>
+                <th>Đơn vị</th>
+                <th>Ngày tạo</th>
+                <th style={{ width: '60px' }}></th>
               </tr>
             </TableHeader>
             <TableBody>
               {products.map(product => (
-                <tr key={product.id}>
+                <tr key={product.product_id}>
                   <td>{product.name}</td>
                   <PriceCell>{product.price.toLocaleString()}đ</PriceCell>
-                  <PriceCell>{product.originalPrice.toLocaleString()}đ</PriceCell>
-                  <td>{product.quantity}</td>
-                  <td>{product.category}</td>
-                  <td>{product.size}</td>
-                  <StatusCell status={product.condition}>
-                    <span>{product.condition}</span>
-                  </StatusCell>
-                  <td>{product.date}</td>
+                  <PriceCell>{product.original_price.toLocaleString()}đ</PriceCell>
+                  <td>{product.stock_quantity}</td>
+                  <td>{product.category_name || 'N/A'}</td>
+                  <td>{product.unit || 'N/A'}</td>
+                  <td>{new Date(product.created_at).toLocaleDateString('vi-VN')}</td>
                   <td>
-                    <ActionMenu>
-                      <ActionButton onClick={() => toggleActionMenu(product.id)}>
+                    <ActionMenu className="action-menu">
+                      <ActionButton 
+                        ref={el => actionButtonRefs.current[product.product_id] = el}
+                        onClick={(e) => toggleActionMenu(product.product_id, e)}
+                        title="Tùy chọn"
+                        aria-label="Tùy chọn"
+                      >
                         <TbDots />
                       </ActionButton>
 
-                      {actionMenuOpen === product.id && (
-                        <ActionMenuDropdown>
-                          <button onClick={() => handleEdit(product.id)}>Sửa</button>
-                          <button onClick={() => handleCopyId(product.id)}>Copy ID</button>
-                          <button className="delete" onClick={() => handleDelete(product.id)}>Xóa</button>
+                      {actionMenuOpen === product.product_id && (
+                        <ActionMenuDropdown 
+                          showAbove={menuPositions[product.product_id]}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button onClick={(e) => handleMenuAction('edit', product.product_id, e)}>
+                            Sửa
+                          </button>
+                          <button onClick={(e) => handleMenuAction('copy', product.product_id, e)}>
+                            Copy ID
+                          </button>
+                          <button 
+                            className="delete" 
+                            onClick={(e) => handleMenuAction('delete', product.product_id, e)}
+                          >
+                            Xóa
+                          </button>
                         </ActionMenuDropdown>
                       )}
                     </ActionMenu>
@@ -448,18 +818,106 @@ const ProductList = () => {
             </TableBody>
           </ProductsTable>
 
-          <Pagination>
+          <PaginationContainer>
             <PageInfo>
-              Trang 1 trên 1
+              Hiển thị <span>{Math.min(itemsPerPage, products.length)}</span> / <span>{totalItems}</span> sản phẩm | Trang <span>{currentPage}</span> / <span>{totalPages}</span>
             </PageInfo>
+            
             <PageControls>
-              <PageButton disabled>&lt;&lt;</PageButton>
-              <PageButton disabled>&lt;</PageButton>
-              <PageButton active>1</PageButton>
-              <PageButton disabled>&gt;</PageButton>
-              <PageButton disabled>&gt;&gt;</PageButton>
+              <PageButton 
+                className="control"
+                onClick={() => handlePageChange(1)} 
+                disabled={currentPage === 1}
+                title="Trang đầu"
+              >
+                &laquo;
+              </PageButton>
+              
+              <PageButton 
+                className="control"
+                onClick={() => handlePageChange(currentPage - 1)} 
+                disabled={currentPage === 1}
+                title="Trang trước"
+              >
+                &lsaquo;
+              </PageButton>
+              
+              {/* Hiển thị nút phân trang thông minh */}
+              {(() => {
+                let pageButtons = [];
+                const totalPageButtons = Math.min(5, totalPages);
+                
+                // Tính toán phạm vi các trang hiển thị
+                let startPage = Math.max(1, currentPage - Math.floor(totalPageButtons / 2));
+                let endPage = startPage + totalPageButtons - 1;
+                
+                if (endPage > totalPages) {
+                  endPage = totalPages;
+                  startPage = Math.max(1, endPage - totalPageButtons + 1);
+                }
+                
+                // Hiển thị "..." nếu không bắt đầu từ trang 1
+                if (startPage > 1) {
+                  pageButtons.push(
+                    <PageButton 
+                      key="start-ellipsis"
+                      onClick={() => handlePageChange(startPage - 1)}
+                      title={`Trang ${startPage - 1}`}
+                    >
+                      ...
+                    </PageButton>
+                  );
+                }
+                
+                // Hiển thị các nút trang
+                for (let i = startPage; i <= endPage; i++) {
+                  pageButtons.push(
+                    <PageButton 
+                      key={i}
+                      active={i === currentPage}
+                      onClick={() => handlePageChange(i)}
+                      title={`Trang ${i}`}
+                    >
+                      {i}
+                    </PageButton>
+                  );
+                }
+                
+                // Hiển thị "..." nếu không kết thúc ở trang cuối
+                if (endPage < totalPages) {
+                  pageButtons.push(
+                    <PageButton 
+                      key="end-ellipsis"
+                      onClick={() => handlePageChange(endPage + 1)}
+                      title={`Trang ${endPage + 1}`}
+                    >
+                      ...
+                    </PageButton>
+                  );
+                }
+                
+                return pageButtons;
+              })()}
+              
+              <PageButton 
+                className="control"
+                onClick={() => handlePageChange(currentPage + 1)} 
+                disabled={currentPage === totalPages}
+                title="Trang sau"
+              >
+                &rsaquo;
+              </PageButton>
+              
+              <PageButton 
+                className="control"
+                onClick={() => handlePageChange(totalPages)} 
+                disabled={currentPage === totalPages}
+                title="Trang cuối"
+              >
+                &raquo;
+              </PageButton>
             </PageControls>
-          </Pagination>
+          </PaginationContainer>
         </>
       )}
 
@@ -468,8 +926,11 @@ const ProductList = () => {
         onClose={handleCloseModal}
         onSave={handleSaveProduct}
         isLoading={false}
+        product={editingProduct}
+        categories={categories}
       />
-    </Container>);
+    </Container>
+  );
 };
 
 export default ProductList;

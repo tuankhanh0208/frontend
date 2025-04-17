@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaTimes } from 'react-icons/fa';
+import { FaTimes, FaCloudUploadAlt, FaTrash, FaStar, FaPlus } from 'react-icons/fa';
 import Button from '../common/Button/Button';
 
 const ModalOverlay = styled.div`
@@ -149,12 +149,117 @@ const ImageUploadContainer = styled.div`
 
 const ImageUploadLabel = styled.label`
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   font-weight: 500;
   color: #333;
 `;
 
-const UploadButton = styled.div`
+const ImageGallery = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+`;
+
+const ImagePreviewContainer = styled.div`
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s;
+  
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-3px);
+  }
+  
+  ${props => props.isPrimary && `
+    border: 2px solid #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+  `}
+`;
+
+const ImagePreview = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const ImageActions = styled.div`
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-bottom-left-radius: 8px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.2s;
+  
+  ${ImagePreviewContainer}:hover & {
+    opacity: 1;
+  }
+`;
+
+const ImageActionButton = styled.button`
+  background: none;
+  border: none;
+  color: white;
+  padding: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+  
+  &.primary-button {
+    color: ${props => props.isPrimary ? '#FFD700' : 'white'};
+  }
+  
+  &.delete-button:hover {
+    background-color: rgba(244, 67, 54, 0.8);
+  }
+`;
+
+const EmptyImageContainer = styled.div`
+  width: 120px;
+  height: 120px;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-direction: column;
+  padding: 15px;
+  text-align: center;
+  
+  &:hover {
+    border-color: #4CAF50;
+    color: #4CAF50;
+    background-color: rgba(76, 175, 80, 0.05);
+  }
+  
+  svg {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  
+  span {
+    font-size: 12px;
+  }
+`;
+
+const UploadButton = styled.label`
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -166,9 +271,16 @@ const UploadButton = styled.div`
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s;
+  margin-top: 10px;
   
   &:hover {
     background-color: #f5f5f5;
+    color: #4CAF50;
+    border-color: #4CAF50;
+  }
+  
+  svg {
+    margin-right: 8px;
   }
   
   input {
@@ -221,29 +333,118 @@ const InventoryInput = styled.div`
   margin-bottom: 20px;
 `;
 
-const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
-  const [product, setProduct] = useState({
+const LoadingSpinner = styled.div`
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #4CAF50;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false, product = null, categories = [] }) => {
+  const [formData, setFormData] = useState({
     name: '',
-    category: '',
-    size: 'Medium',
-    discount: '0.00',
-    productionCost: '0.00',
-    profit: '0.00',
+    category_id: '',
+    unit: '',
+    price: '',
+    original_price: '',
     description: '',
-    inventory: 0,
-    featured: false,
+    stock_quantity: 0,
+    is_featured: false,
     image: null
   });
   
   const [errors, setErrors] = useState({});
+  const [images, setImages] = useState([]);
+  const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
+  const isEditing = !!product;
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  
+  useEffect(() => {
+    if (product) {
+      // Populate form with existing product data
+      setFormData({
+        name: product.name || '',
+        category_id: product.category_id || '',
+        unit: product.unit || '',
+        price: product.price || '',
+        original_price: product.original_price || '',
+        description: product.description || '',
+        stock_quantity: product.stock_quantity || 0,
+        is_featured: product.is_featured || false
+      });
+      
+      // Xử lý hình ảnh sản phẩm
+      const productImages = [];
+      let primaryIndex = 0;
+      
+      // Sử dụng image_urls nếu có
+      if (product.image_urls && product.image_urls.length > 0) {
+        product.image_urls.forEach((url, index) => {
+          productImages.push({
+            url: url,
+            file: null,
+            isExisting: true
+          });
+        });
+      } else if (product.images && product.images.length > 0) {
+        // Sử dụng trường images cũ (để tương thích ngược)
+        product.images.forEach((img, index) => {
+          if (img.is_primary) {
+            primaryIndex = index;
+          }
+          productImages.push({
+            url: img.image_url,
+            file: null,
+            isExisting: true
+          });
+        });
+      } else if (product.image_url) {
+        // Nếu có trường image_url trực tiếp
+        productImages.push({
+          url: product.image_url,
+          file: null,
+          isExisting: true
+        });
+      }
+      
+      setImages(productImages);
+      setPrimaryImageIndex(primaryIndex);
+    } else {
+      // Reset form when adding new product
+      setFormData({
+        name: '',
+        category_id: '',
+        unit: '',
+        price: '',
+        original_price: '',
+        description: '',
+        stock_quantity: 0,
+        is_featured: false
+      });
+      setImages([]);
+      setPrimaryImageIndex(0);
+    }
+  }, [product]);
   
   if (!isOpen) return null;
   
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setProduct({
-      ...product,
-      [name]: type === 'checkbox' ? checked : value
+    setFormData({
+      ...formData,
+      [name]: type === 'checkbox' ? checked : 
+              type === 'number' ? parseFloat(value) : value
     });
     
     if (errors[name]) {
@@ -254,12 +455,23 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
     }
   };
   
-  const handleImageChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setProduct({
-        ...product,
-        image: e.target.files[0]
+  const handleImageUpload = (e) => {
+    if (e.target.files) {
+      const newImages = [...images];
+      
+      Array.from(e.target.files).forEach(file => {
+        // Tạo URL xem trước cho hình ảnh
+        const imageUrl = URL.createObjectURL(file);
+        
+        // Thêm vào mảng hình ảnh
+        newImages.push({
+          url: imageUrl,
+          file: file,
+          isExisting: false
+        });
       });
+      
+      setImages(newImages);
       
       if (errors.image) {
         setErrors({
@@ -267,22 +479,59 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
           image: null
         });
       }
+      
+      // Reset input để có thể chọn lại cùng một file
+      e.target.value = "";
     }
+  };
+  
+  const handleDeleteImage = (index) => {
+    const newImages = [...images];
+    
+    // Nếu xóa ảnh chính, hãy đặt ảnh đầu tiên làm ảnh chính
+    if (index === primaryImageIndex) {
+      const newPrimaryIndex = index === 0 && newImages.length > 1 ? 1 : 0;
+      setPrimaryImageIndex(newPrimaryIndex);
+    } else if (index < primaryImageIndex) {
+      // Nếu xóa ảnh trước ảnh chính, cập nhật lại index của ảnh chính
+      setPrimaryImageIndex(primaryImageIndex - 1);
+    }
+    
+    // Xóa hình ảnh
+    newImages.splice(index, 1);
+    setImages(newImages);
+  };
+  
+  const handleSetPrimary = (index) => {
+    setPrimaryImageIndex(index);
   };
   
   const validate = () => {
     const newErrors = {};
     
-    if (!product.name.trim()) {
+    if (!formData.name.trim()) {
       newErrors.name = 'Tên sản phẩm là bắt buộc';
     }
     
-    if (!product.category.trim()) {
-      newErrors.category = 'Danh mục là bắt buộc';
+    if (!formData.category_id) {
+      newErrors.category_id = 'Danh mục là bắt buộc';
     }
     
-    if (!product.description.trim()) {
+    if (!formData.price || formData.price <= 0) {
+      newErrors.price = 'Giá phải lớn hơn 0';
+    }
+    
+    if (!formData.original_price || formData.original_price <= 0) {
+      newErrors.original_price = 'Giá gốc phải lớn hơn 0';
+    }
+    
+    if (!formData.description.trim()) {
       newErrors.description = 'Mô tả là bắt buộc';
+    }
+    
+    // Yêu cầu ít nhất một hình ảnh
+    if (images.length === 0) {
+      newErrors.image = 'Vui lòng thêm ít nhất một hình ảnh sản phẩm';
     }
     
     setErrors(newErrors);
@@ -297,10 +546,39 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
     }
     
     try {
-      await onSave(product);
+      setIsUploading(true);
+      setUploadError('');
+      
+      // Chuẩn bị dữ liệu sản phẩm
+      const productData = new FormData();
+      
+      // Thêm các trường thông tin sản phẩm
+      productData.append('name', formData.name);
+      productData.append('category_id', formData.category_id);
+      productData.append('price', formData.price);
+      productData.append('original_price', formData.original_price);
+      
+      if (formData.unit) {
+        productData.append('unit', formData.unit);
+      }
+      
+      productData.append('description', formData.description);
+      productData.append('stock_quantity', parseInt(formData.stock_quantity, 10));
+      productData.append('is_featured', formData.is_featured);
+      
+      // Thêm hình ảnh chính vào FormData
+      if (images.length > 0 && images[primaryImageIndex].file) {
+        productData.append('file', images[primaryImageIndex].file);
+      }
+      
+      // Gọi API để lưu sản phẩm
+      await onSave(productData);
       onClose();
     } catch (error) {
       console.error('Failed to save product:', error);
+      setUploadError('Lỗi khi lưu sản phẩm: ' + error.message);
+    } finally {
+      setIsUploading(false);
     }
   };
   
@@ -308,7 +586,7 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
     <ModalOverlay>
       <ModalContainer>
         <ModalHeader>
-          <ModalTitle>Sản phẩm</ModalTitle>
+          <ModalTitle>{isEditing ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</ModalTitle>
           <CloseButton onClick={onClose}>
             <FaTimes />
           </CloseButton>
@@ -317,123 +595,157 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
         <ModalBody>
           <form onSubmit={handleSubmit}>
             <ImageUploadContainer>
-              <ImageUploadLabel>Ảnh</ImageUploadLabel>
+              <ImageUploadLabel>Hình ảnh sản phẩm</ImageUploadLabel>
+              <ImageGallery>
+                {images.map((image, index) => (
+                  <ImagePreviewContainer 
+                    key={index} 
+                    isPrimary={index === primaryImageIndex}
+                  >
+                    <ImagePreview src={image.url} alt={`Sản phẩm ${index + 1}`} />
+                    <ImageActions>
+                      <ImageActionButton 
+                        type="button"
+                        className="primary-button"
+                        onClick={() => handleSetPrimary(index)}
+                        title="Đặt làm ảnh chính"
+                        isPrimary={index === primaryImageIndex}
+                      >
+                        <FaStar />
+                      </ImageActionButton>
+                      <ImageActionButton 
+                        type="button" 
+                        className="delete-button"
+                        onClick={() => handleDeleteImage(index)}
+                        title="Xóa ảnh"
+                      >
+                        <FaTrash />
+                      </ImageActionButton>
+                    </ImageActions>
+                  </ImagePreviewContainer>
+                ))}
+                
+                {/* Container để thêm ảnh mới */}
+                <EmptyImageContainer onClick={() => document.getElementById('image-upload').click()}>
+                  <FaPlus />
+                  <span>Thêm ảnh</span>
+                </EmptyImageContainer>
+              </ImageGallery>
+              
               <UploadButton as="label">
-                Upload an Image
+                <FaCloudUploadAlt />
+                Tải lên nhiều ảnh
                 <input 
+                  id="image-upload"
                   type="file" 
-                  accept="image/*" 
-                  onChange={handleImageChange} 
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  multiple
                 />
               </UploadButton>
+              
+              {errors.image && <FormError>{errors.image}</FormError>}
+              {uploadError && <FormError>{uploadError}</FormError>}
             </ImageUploadContainer>
             
             <FormRow>
               <FormColumn>
                 <FormGroup>
-                  <FormLabel>Tên</FormLabel>
+                  <FormLabel>Tên sản phẩm</FormLabel>
                   <FormInput
                     type="text"
                     name="name"
-                    value={product.name}
+                    value={formData.name}
                     onChange={handleChange}
                     placeholder="Tên sản phẩm"
                   />
+                  {errors.name && <FormError>{errors.name}</FormError>}
                 </FormGroup>
               </FormColumn>
               
               <FormColumn>
                 <FormGroup>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>Danh mục</FormLabel>
                   <FormSelect
-                    name="category"
-                    value={product.category}
+                    name="category_id"
+                    value={formData.category_id}
                     onChange={handleChange}
                   >
                     <option value="">Chọn danh mục</option>
-                    <option value="1">Danh mục 1</option>
-                    <option value="2">Danh mục 2</option>
-                    <option value="3">Danh mục 3</option>
+                    {categories.map(category => (
+                      <option key={category.category_id} value={category.category_id}>
+                        {category.name}
+                      </option>
+                    ))}
                   </FormSelect>
+                  {errors.category_id && <FormError>{errors.category_id}</FormError>}
                 </FormGroup>
               </FormColumn>
             </FormRow>
             
             <FormGroup>
-              <FormLabel>Size</FormLabel>
-              <FormSelect
-                name="size"
-                value={product.size}
+              <FormLabel>Đơn vị</FormLabel>
+              <FormInput
+                type="text"
+                name="unit"
+                value={formData.unit}
                 onChange={handleChange}
-              >
-                <option value="Small">Small</option>
-                <option value="Medium">Medium</option>
-                <option value="Large">Large</option>
-              </FormSelect>
+                placeholder="vd: kg, gói, thùng"
+              />
             </FormGroup>
             
             <FinancialContainer>
               <FinancialRow>
                 <FormGroup>
-                  <FormLabel>Giảm giá</FormLabel>
+                  <FormLabel>Giá bán</FormLabel>
                   <FormInput
                     type="number"
-                    name="discount"
-                    value={product.discount}
+                    name="price"
+                    value={formData.price}
                     onChange={handleChange}
                     step="0.01"
                     min="0"
                     placeholder="0.00"
                   />
+                  {errors.price && <FormError>{errors.price}</FormError>}
                 </FormGroup>
                 
                 <FormGroup>
-                  <FormLabel>Chi phí sản xuất</FormLabel>
+                  <FormLabel>Giá gốc</FormLabel>
                   <FormInput
                     type="number"
-                    name="productionCost"
-                    value={product.productionCost}
+                    name="original_price"
+                    value={formData.original_price}
                     onChange={handleChange}
                     step="0.01"
                     min="0"
                     placeholder="0.00"
                   />
+                  {errors.original_price && <FormError>{errors.original_price}</FormError>}
                 </FormGroup>
               </FinancialRow>
-              
-              <FormGroup>
-                <FormLabel>Lợi nhuận</FormLabel>
-                <FormInput
-                  type="number"
-                  name="profit"
-                  value={product.profit}
-                  onChange={handleChange}
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                />
-              </FormGroup>
             </FinancialContainer>
             
             <DescriptionContainer>
               <FormLabel>Mô tả</FormLabel>
               <FormTextarea
                 name="description"
-                value={product.description}
+                value={formData.description}
                 onChange={handleChange}
                 placeholder="Mô tả sản phẩm ..."
               />
+              {errors.description && <FormError>{errors.description}</FormError>}
             </DescriptionContainer>
             
             <CheckboxContainer>
               <input
                 type="checkbox"
-                id="featured"
-                name="featured"
-                checked={product.featured}
+                id="is_featured"
+                name="is_featured"
+                checked={formData.is_featured}
                 onChange={handleChange}
               />
-              <label htmlFor="featured">
+              <label htmlFor="is_featured">
                 Nổi bật
               </label>
               <p>Sản phẩm này sẽ xuất hiện trên trang chủ.</p>
@@ -443,8 +755,8 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
               <FormLabel>Có sẵn trong kho</FormLabel>
               <FormInput
                 type="number"
-                name="inventory"
-                value={product.inventory}
+                name="stock_quantity"
+                value={formData.stock_quantity}
                 onChange={handleChange}
                 min="0"
                 placeholder="0"
@@ -460,9 +772,16 @@ const AddProductModal = ({ isOpen, onClose, onSave, isLoading = false }) => {
           <Button 
             variant="secondary" 
             onClick={handleSubmit} 
-            disabled={isLoading}
+            disabled={isLoading || isUploading}
           >
-            Lưu sản phẩm
+            {isLoading || isUploading ? (
+              <>
+                <LoadingSpinner /> 
+                {isUploading ? 'Đang tải lên...' : 'Đang lưu...'}
+              </>
+            ) : (
+              isEditing ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm'
+            )}
           </Button>
         </ModalFooter>
       </ModalContainer>

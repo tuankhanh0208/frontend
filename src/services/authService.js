@@ -446,7 +446,18 @@ const authService = {
       });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Cập nhật ảnh đại diện thất bại');
+      console.error('Avatar upload error:', {
+        message: error.message,
+        responseStatus: error.response?.status,
+        responseData: error.response?.data?.detail || error.response?.data
+      });
+      
+      // Tạo thông báo lỗi chi tiết để frontend hiển thị
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          'Cập nhật ảnh đại diện thất bại';
+      
+      throw new Error(errorMessage);
     }
   },
   

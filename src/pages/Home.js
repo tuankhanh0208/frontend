@@ -291,20 +291,6 @@ const Home = () => {
               <p>Giảm đến 30%</p>
             </div>
           </CategoryCard>
-          <CategoryCard>
-            <img src="/assets/categories/vegetables.jpg" alt="Vegetables" />
-            <div className="overlay">
-              <h3>Thực phẩm tươi mới hàng ngày</h3>
-              <p>Giảm đến 30%</p>
-            </div>
-          </CategoryCard>
-          <CategoryCard>
-            <img src="/assets/categories/fruits.jpg" alt="Fruits" />
-            <div className="overlay">
-              <h3>Trái cây đặc biệt giảm giá</h3>
-              <p>Giảm đến 30%</p>
-            </div>
-          </CategoryCard>
         </CategorySection>
       </Section>
     </MainLayout>

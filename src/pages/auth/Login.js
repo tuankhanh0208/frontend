@@ -12,8 +12,11 @@ const LoginContainer = styled.div`
   max-width: 700px;
   width: 100%;
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   padding: 30px;
 =======
+=======
+>>>>>>> Stashed changes
   margin: 0 auto;
   padding: 15px 25px;
 >>>>>>> Stashed changes
@@ -176,7 +179,13 @@ const Login = () => {
 
   const redirectPath = location.state?.from || '/';
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   
+=======
+
+  const [blockedAccountError, setBlockedAccountError] = useState(false);
+
+>>>>>>> Stashed changes
 =======
 
   const [blockedAccountError, setBlockedAccountError] = useState(false);
@@ -228,8 +237,11 @@ const Login = () => {
       <LoginContainer>
         <LoginTitle>Đăng Nhập</LoginTitle>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         
 =======
+=======
+>>>>>>> Stashed changes
 
         {blockedAccountError && (
           <div style={{
@@ -245,6 +257,9 @@ const Login = () => {
           </div>
         )}
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         <Formik
           initialValues={initialValues}
@@ -255,6 +270,7 @@ const Login = () => {
             <Form>
               <FormGroup>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 <Label htmlFor="username">Tên đăng nhập</Label>
                 <Input 
                   type="text" 
@@ -262,12 +278,17 @@ const Login = () => {
                   name="username" 
                   placeholder="Nhập tên đăng nhập" 
 =======
+=======
+>>>>>>> Stashed changes
                 <Label htmlFor="username_or_email">Tên đăng nhập hoặc Email</Label>
                 <Input
                   type="text"
                   id="username_or_email"
                   name="username_or_email"
                   placeholder="Nhập tên đăng nhập hoặc email"
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 />
                 <ErrorMessage name="username" component={ErrorText} />
@@ -310,9 +331,12 @@ const Login = () => {
           <span>Hoặc đăng nhập / đăng ký với</span>
         </OrDivider>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         
         <SocialButtons>
 =======
+=======
+>>>>>>> Stashed changes
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '5px' }}>
 >>>>>>> Stashed changes
@@ -320,8 +344,12 @@ const Login = () => {
             <FaGoogle /> Tiếp tục với Google
           </GoogleButton>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         </SocialButtons>
         <SocialButtons>
+=======
+
+>>>>>>> Stashed changes
 =======
 
 >>>>>>> Stashed changes
@@ -329,8 +357,13 @@ const Login = () => {
             <FaFacebook /> Tiếp tục với Facebook
           </FacebookButton>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         </SocialButtons>
         
+=======
+        </div>
+
+>>>>>>> Stashed changes
 =======
         </div>
 

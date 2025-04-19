@@ -200,23 +200,25 @@ const CategoryCard = styled.div`
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         const data = await productService.getFeaturedProducts();
         setFeaturedProducts(data);
+        console.log('Featured Products:', data);
+
       } catch (error) {
         console.error('Failed to fetch featured products:', error);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchProducts();
   }, []);
-  
+
   return (
     <MainLayout>
       <Banner>
@@ -226,7 +228,7 @@ const Home = () => {
           <Button variant="secondary" size="large">Mua ngay</Button>
         </BannerContent>
       </Banner>
-      
+
       <Features>
         <FeatureItem>
           <FaTruck />
@@ -257,7 +259,7 @@ const Home = () => {
           </div>
         </FeatureItem>
       </Features>
-      
+
       <PromoBanner>
         <div>
           <h3>Giao hàng miễn phí khi bạn chi tiêu trên 200.000đ</h3>
@@ -265,7 +267,7 @@ const Home = () => {
         </div>
         <Button variant="secondary">Mua ngay</Button>
       </PromoBanner>
-      
+
       <Section>
         <SectionTitle>Sản phẩm nổi bật</SectionTitle>
         <ProductGrid>
@@ -278,7 +280,7 @@ const Home = () => {
           )}
         </ProductGrid>
       </Section>
-      
+
       <Section>
         <SectionTitle>Danh mục sản phẩm</SectionTitle>
         <CategorySection>

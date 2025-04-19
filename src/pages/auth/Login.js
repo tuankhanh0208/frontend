@@ -9,9 +9,14 @@ import Button from '../../components/common/Button/Button';
 import { AuthContext } from '../../context/AuthContext';
 
 const LoginContainer = styled.div`
-  max-width: 500px;
+  max-width: 700px;
   width: 100%;
+<<<<<<< Updated upstream
   padding: 30px;
+=======
+  margin: 0 auto;
+  padding: 15px 25px;
+>>>>>>> Stashed changes
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   background: white;
@@ -168,21 +173,27 @@ const Login = () => {
   const { login, loginWithGoogle, loginWithFacebook } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const redirectPath = location.state?.from || '/';
+<<<<<<< Updated upstream
   
+=======
+
+  const [blockedAccountError, setBlockedAccountError] = useState(false);
+
+>>>>>>> Stashed changes
   const initialValues = {
     username: '',
     password: ''
   };
-  
+
   const validationSchema = Yup.object({
     username: Yup.string()
       .required('Tên đăng nhập là trường bắt buộc'),
     password: Yup.string()
       .required('Mật khẩu là trường bắt buộc')
   });
-  
+
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
       await login(values.username, values.password);
@@ -193,7 +204,7 @@ const Login = () => {
       setSubmitting(false);
     }
   };
-  
+
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
@@ -202,7 +213,7 @@ const Login = () => {
       console.error('Google login failed:', error);
     }
   };
-  
+
   const handleFacebookLogin = async () => {
     try {
       await loginWithFacebook();
@@ -211,12 +222,30 @@ const Login = () => {
       console.error('Facebook login failed:', error);
     }
   };
-  
+
   return (
     <AuthLayout>
       <LoginContainer>
         <LoginTitle>Đăng Nhập</LoginTitle>
+<<<<<<< Updated upstream
         
+=======
+
+        {blockedAccountError && (
+          <div style={{
+            padding: '8px 12px',
+            background: '#ffebee',
+            color: '#c62828',
+            borderRadius: '4px',
+            marginBottom: '16px',
+            fontSize: '13px',
+            textAlign: 'center'
+          }}>
+            Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.
+          </div>
+        )}
+
+>>>>>>> Stashed changes
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -225,27 +254,36 @@ const Login = () => {
           {({ isSubmitting }) => (
             <Form>
               <FormGroup>
+<<<<<<< Updated upstream
                 <Label htmlFor="username">Tên đăng nhập</Label>
                 <Input 
                   type="text" 
                   id="username" 
                   name="username" 
                   placeholder="Nhập tên đăng nhập" 
+=======
+                <Label htmlFor="username_or_email">Tên đăng nhập hoặc Email</Label>
+                <Input
+                  type="text"
+                  id="username_or_email"
+                  name="username_or_email"
+                  placeholder="Nhập tên đăng nhập hoặc email"
+>>>>>>> Stashed changes
                 />
                 <ErrorMessage name="username" component={ErrorText} />
               </FormGroup>
-              
+
               <FormGroup>
                 <Label htmlFor="password">Mật khẩu</Label>
                 <PasswordContainer>
-                  <Input 
-                    type={showPassword ? "text" : "password"} 
-                    id="password" 
-                    name="password" 
-                    placeholder="••••••••" 
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    placeholder="••••••••"
                   />
-                  <PasswordToggle 
-                    type="button" 
+                  <PasswordToggle
+                    type="button"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -254,12 +292,12 @@ const Login = () => {
                 <ErrorMessage name="password" component={ErrorText} />
                 <ForgotPassword to="/forgot-password">Quên mật khẩu?</ForgotPassword>
               </FormGroup>
-              
-              <Button 
-                type="submit" 
-                variant="secondary" 
-                fullWidth 
-                size="large" 
+
+              <Button
+                type="submit"
+                variant="secondary"
+                fullWidth
+                size="large"
                 disabled={isSubmitting}
               >
                 Tiếp tục
@@ -267,22 +305,36 @@ const Login = () => {
             </Form>
           )}
         </Formik>
-        
+
         <OrDivider>
           <span>Hoặc đăng nhập / đăng ký với</span>
         </OrDivider>
+<<<<<<< Updated upstream
         
         <SocialButtons>
+=======
+
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '5px' }}>
+>>>>>>> Stashed changes
           <GoogleButton onClick={handleGoogleLogin}>
             <FaGoogle /> Tiếp tục với Google
           </GoogleButton>
+<<<<<<< Updated upstream
         </SocialButtons>
         <SocialButtons>
+=======
+
+>>>>>>> Stashed changes
           <FacebookButton onClick={handleFacebookLogin}>
             <FaFacebook /> Tiếp tục với Facebook
           </FacebookButton>
+<<<<<<< Updated upstream
         </SocialButtons>
         
+=======
+        </div>
+
+>>>>>>> Stashed changes
         <SignupPrompt>
           Chưa có tài khoản?
           <Link to="/register">Đăng ký</Link>

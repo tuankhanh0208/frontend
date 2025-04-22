@@ -1,5 +1,5 @@
 // src/components/category/CategoryProductItem/CategoryProductItem.js
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaStar, FaShoppingCart, FaHeart, FaEye } from 'react-icons/fa';
@@ -198,6 +198,11 @@ const CategoryProductItem = ({ product }) => {
   const { addToCart } = useContext(CartContext);
   const [inWishlist, setInWishlist] = useState(false);
   
+  useEffect(() => {
+    console.log('ProductID trong CategoryProductItem:', product?.id);
+    console.log('Sản phẩm đầy đủ:', product);
+  }, [product]);
+  
   const handleAddToCart = () => {
     addToCart(product, 1);
   };
@@ -207,20 +212,40 @@ const CategoryProductItem = ({ product }) => {
     // Here you would typically call an API to update the user's wishlist
   };
   
-  const discountPercentage = product.discountPrice 
-    ? Math.round(((product.originalPrice - product.discountPrice) / product.originalPrice) * 100) 
-    : 0;
+  // Tính toán giá và phần trăm giảm giá tương tự như trong ProductDetail.js
+  const hasOriginalPrice = product.originalPrice || product.original_price;
+  const hasDiscountPrice = product.discountPrice || product.price;
+  const originalPriceValue = product.originalPrice || product.original_price || 0;
+  const displayPrice = product.discountPrice || product.price || 0;
+  
+  // Kiểm tra và tính toán phần trăm giảm giá
+  const hasDiscount = product.hasDiscount !== undefined ? product.hasDiscount : 
+                    (hasOriginalPrice && hasDiscountPrice && originalPriceValue > displayPrice);
+  const discountPercentage = hasDiscount 
+  ? Math.round(((originalPriceValue - hasDiscountPrice) / originalPriceValue) * 100) 
+  : 0;
+  
+  console.log('CategoryProductItem: Thông tin giảm giá:', {
+    hasOriginalPrice,
+    hasDiscountPrice,
+    originalPriceValue,
+    displayPrice,
+    hasDiscount,
+    discountPercentage
+  });
+
+  const productId = product?.id || 'undefined-id';
   
   return (
     <Card>
       <ImageContainer className="image-container">
         <Link to={`/products/${product.id}`}>
           <img 
-            src={product.images ? product.images[0] : product.image} 
+            src={product.image} 
             alt={product.name} 
           />
         </Link>
-        {discountPercentage > 0 && (
+        {hasDiscount && discountPercentage > 0 && (
           <DiscountBadge>{discountPercentage}% GIẢM</DiscountBadge>
         )}
         <QuickActions className="quick-actions">
@@ -260,9 +285,9 @@ const CategoryProductItem = ({ product }) => {
         </Rating>
         
         <Price>
-          <span className="current">{product.discountPrice || product.originalPrice}đ</span>
-          {product.discountPrice && (
-            <span className="original">{product.originalPrice}đ</span>
+          <span className="current">{Math.round(displayPrice).toLocaleString()}đ/{product.unit || 'kg'}</span>
+          {hasDiscount && discountPercentage > 0 && (
+            <span className="original">{Math.round(originalPriceValue).toLocaleString()}đ</span>
           )}
         </Price>
         

@@ -11,7 +11,7 @@ import { AuthContext } from '../../context/AuthContext';
 const RegisterContainer = styled.div`
   max-width: 500px;
   width: 100%;
-  padding: 30px;
+  padding: 20px 30px;
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   background: white;
@@ -21,22 +21,23 @@ const RegisterContainer = styled.div`
 const RegisterTitle = styled.h1`
   text-align: center;
   color: #0A4D7C;
-  font-size: 28px;
-  margin-bottom: 30px;
+  font-size: 24px;
+  margin-bottom: 15px;
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 25px;
-  min-height: 90px;
+  margin-bottom: 15px;
+  min-height: 70px;
   position: relative;
-  padding-bottom: 20px;
+  padding-bottom: 10px;
 `;
 
 const Label = styled.label`
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   color: #333;
   font-weight: 500;
+  font-size: 14px;
   
   .required {
     color: #d32f2f;
@@ -46,10 +47,10 @@ const Label = styled.label`
 
 const Input = styled(Field)`
   width: 100%;
-  padding: 12px 15px;
+  padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 16px;
+  font-size: 14px;
   &:focus {
     outline: none;
     border-color: #0A4D7C;
@@ -76,9 +77,9 @@ const PasswordToggle = styled.button`
 
 const ErrorText = styled.div`
   color: #d32f2f;
-  font-size: 14px;
-  margin-top: 5px;
-  min-height: 20px;
+  font-size: 12px;
+  margin-top: 3px;
+  min-height: 16px;
   display: block;
   position: absolute;
 `;
@@ -86,15 +87,15 @@ const ErrorText = styled.div`
 const TermsCheckbox = styled.div`
   display: flex;
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   
   input {
-    margin-top: 5px;
-    margin-right: 10px;
+    margin-top: 3px;
+    margin-right: 8px;
   }
   
   label {
-    font-size: 14px;
+    font-size: 12px;
     color: #666;
     a {
       color: #0A4D7C;
@@ -108,7 +109,7 @@ const TermsCheckbox = styled.div`
 
 const LoginPrompt = styled.div`
   text-align: center;
-  margin-top: 30px;
+  margin-top: 15px;
   color: #666;
   font-size: 14px;
   
@@ -131,6 +132,7 @@ const Register = () => {
   
   const initialValues = {
     name: '',
+    username: '',
     email: '',
     phone: '',
     password: '',
@@ -141,6 +143,10 @@ const Register = () => {
   const validationSchema = Yup.object({
     name: Yup.string()
       .required('Họ và tên là trường bắt buộc'),
+    username: Yup.string()
+      .min(3, 'Tên đăng nhập phải có ít nhất 3 ký tự')
+      .matches(/^[a-zA-Z0-9_]+$/, 'Tên đăng nhập chỉ chứa chữ cái, số và dấu gạch dưới')
+      .required('Tên đăng nhập là trường bắt buộc'),
     email: Yup.string()
       .email('Địa chỉ email không hợp lệ')
       .required('Email là trường bắt buộc'),
@@ -159,7 +165,7 @@ const Register = () => {
   
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
-      await register(values.name, values.email, values.phone, values.password);
+      await register(values.name, values.email, values.phone, values.password, values.username);
       navigate('/login');
     } catch (error) {
       setFieldError('email', 'Email đã được sử dụng.');
@@ -180,72 +186,86 @@ const Register = () => {
         >
           {({ isSubmitting }) => (
             <Form>
-              <FormGroup>
-                <Label htmlFor="name">
-                  Họ và Tên <span className="required">*</span>
-                </Label>
-                <Input type="text" id="name" name="name" />
-                <ErrorMessage name="name" component={ErrorText} />
-              </FormGroup>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                <FormGroup style={{ flex: 1 }}>
+                  <Label htmlFor="name">
+                    Họ và Tên <span className="required">*</span>
+                  </Label>
+                  <Input type="text" id="name" name="name" />
+                  <ErrorMessage name="name" component={ErrorText} />
+                </FormGroup>
+                
+                <FormGroup style={{ flex: 1 }}>
+                  <Label htmlFor="username">
+                    Tên đăng nhập <span className="required">*</span>
+                  </Label>
+                  <Input type="text" id="username" name="username" />
+                  <ErrorMessage name="username" component={ErrorText} />
+                </FormGroup>
+              </div>
               
-              <FormGroup>
-                <Label htmlFor="email">Email</Label>
-                <Input type="email" id="email" name="email" />
-                <ErrorMessage name="email" component={ErrorText} />
-              </FormGroup>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                <FormGroup style={{ flex: 1 }}>
+                  <Label htmlFor="email">Email <span className="required">*</span></Label>
+                  <Input type="email" id="email" name="email" />
+                  <ErrorMessage name="email" component={ErrorText} />
+                </FormGroup>
+                
+                <FormGroup style={{ flex: 1 }}>
+                  <Label htmlFor="phone">
+                    Số điện thoại <span className="required">*</span>
+                  </Label>
+                  <Input type="tel" id="phone" name="phone" />
+                  <ErrorMessage name="phone" component={ErrorText} />
+                </FormGroup>
+              </div>
               
-              <FormGroup>
-                <Label htmlFor="phone">
-                  Số điện thoại <span className="required">*</span>
-                </Label>
-                <Input type="tel" id="phone" name="phone" />
-                <ErrorMessage name="phone" component={ErrorText} />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label htmlFor="password">
-                  Mật khẩu <span className="required">*</span>
-                </Label>
-                <PasswordContainer>
-                  <Input 
-                    type={showPassword ? "text" : "password"} 
-                    id="password" 
-                    name="password" 
-                  />
-                  <PasswordToggle 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                  </PasswordToggle>
-                </PasswordContainer>
-                <ErrorMessage name="password" component={ErrorText} />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label htmlFor="confirmPassword">
-                  Nhập lại mật khẩu <span className="required">*</span>
-                </Label>
-                <PasswordContainer>
-                  <Input 
-                    type={showConfirmPassword ? "text" : "password"} 
-                    id="confirmPassword" 
-                    name="confirmPassword" 
-                  />
-                  <PasswordToggle 
-                    type="button" 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-                  </PasswordToggle>
-                </PasswordContainer>
-                <ErrorMessage name="confirmPassword" component={ErrorText} />
-              </FormGroup>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                <FormGroup style={{ flex: 1 }}>
+                  <Label htmlFor="password">
+                    Mật khẩu <span className="required">*</span>
+                  </Label>
+                  <PasswordContainer>
+                    <Input 
+                      type={showPassword ? "text" : "password"} 
+                      id="password" 
+                      name="password" 
+                    />
+                    <PasswordToggle 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </PasswordToggle>
+                  </PasswordContainer>
+                  <ErrorMessage name="password" component={ErrorText} />
+                </FormGroup>
+                
+                <FormGroup style={{ flex: 1 }}>
+                  <Label htmlFor="confirmPassword">
+                    Nhập lại mật khẩu <span className="required">*</span>
+                  </Label>
+                  <PasswordContainer>
+                    <Input 
+                      type={showConfirmPassword ? "text" : "password"} 
+                      id="confirmPassword" 
+                      name="confirmPassword" 
+                    />
+                    <PasswordToggle 
+                      type="button" 
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    </PasswordToggle>
+                  </PasswordContainer>
+                  <ErrorMessage name="confirmPassword" component={ErrorText} />
+                </FormGroup>
+              </div>
               
               <TermsCheckbox>
                 <Field type="checkbox" id="acceptTerms" name="acceptTerms" />
                 <label htmlFor="acceptTerms">
-                  Bằng cách đăng ký, bạn đồng ý với <Link to="/terms">Điều khoản & Điều kiện của chúng tôi</Link> và xác nhận rằng bạn đã đọc <Link to="/privacy">Chính sách Bảo mật của chúng tôi</Link>.
+                  Bằng cách đăng ký, bạn đồng ý với <Link to="/terms">Điều khoản & Điều kiện</Link> và <Link to="/privacy">Chính sách Bảo mật</Link> của chúng tôi.
                 </label>
               </TermsCheckbox>
               <ErrorMessage name="acceptTerms" component={ErrorText} />

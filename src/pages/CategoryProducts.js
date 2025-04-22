@@ -1,6 +1,6 @@
 // src/pages/CategoryProducts.js
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaHome, FaAngleRight } from 'react-icons/fa';
 import MainLayout from '../layouts/MainLayout';
@@ -8,6 +8,7 @@ import CategoryProductItem from '../components/category/CategoryProductItem/Cate
 import Pagination from '../components/common/Pagination/Pagination';
 import CategorySidebar from '../components/category/CategorySidebar/CategorySidebar';
 import productService from '../services/productService';
+import { useCategory } from '../context/CategoryContext';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -178,19 +179,26 @@ const CategoryURL = styled.div`
 
 // Lấy category ID gốc từ URL
 const getRootCategoryId = (pathname) => {
-  // Lấy phần đầu tiên của route '/categories/X/...'
-  const matches = pathname.match(/\/categories\/(\d+)/);
-  if (matches && matches[1]) {
-    return matches[1];
+  // Xử lý tất cả các định dạng có thể của URL
+  // '/categories/X', '/categories/X/...', '/products/X', etc.
+  const categoryMatches = pathname.match(/\/categories\/(\d+)/);
+  if (categoryMatches && categoryMatches[1]) {
+    console.log('CategoryProducts: Found rootCategoryId in URL:', categoryMatches[1]);
+    return categoryMatches[1];
   }
+  
+  // Không tìm thấy ID trong URL
+  console.log('CategoryProducts: No rootCategoryId found in URL');
   return null;
 };
 
 const CategoryProducts = () => {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [category, setCategory] = useState(null);
   const [rootCategoryId, setRootCategoryId] = useState(null);
+  const [originalRootId, setOriginalRootId] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -201,15 +209,192 @@ const CategoryProducts = () => {
     maxPrice: undefined
   });
   
-  // Xác định rootCategoryId khi component load lần đầu
+  // Refs để theo dõi trạng thái
+  const prevIdRef = useRef(id);
+  const hasFetchedRef = useRef(false);
+  const isProcessingRef = useRef(false);
+  const processingCategoryInfoRef = useRef(false);
+  
+  // Ref để lưu trữ lỗi MCP
+  const mcpErrorsRef = useRef([]);
+  
+  // Sử dụng CategoryContext
+  const { 
+    fetchSubcategories, 
+    clearSubcategoriesCache, 
+    setNavigatingBackStatus, 
+    getSelectedSubcategory,
+    setSelectedSubcategory 
+  } = useCategory();
+  
+  // Memoize các hàm callback để tránh re-renders không cần thiết
+  const memoizedFetchSubcategories = useCallback((catId, force) => {
+    return fetchSubcategories(catId, force);
+  }, [fetchSubcategories]);
+  
+  // Theo dõi lỗi trình duyệt với MCP
   useEffect(() => {
-    // Nếu đã có trong URL thì sử dụng, nếu không thì dùng id hiện tại
+    // Theo dõi lỗi trình duyệt
+    const handleError = (event) => {
+      const errorInfo = {
+        message: event.message,
+        source: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error?.stack || 'Unknown',
+        timestamp: new Date().toISOString()
+      };
+      
+      // Lưu lỗi vào ref
+      mcpErrorsRef.current.push(errorInfo);
+      
+      // Giới hạn số lượng lỗi lưu trữ
+      if (mcpErrorsRef.current.length > 10) {
+        mcpErrorsRef.current.shift();
+      }
+      
+      // Ghi log lỗi
+      console.error('MCP Error Monitoring:', errorInfo);
+      
+      // Reset trạng thái nếu có lỗi với việc tải sản phẩm
+      if (
+        event.message.includes('product') || 
+        event.message.includes('categor') || 
+        event.message.includes('fetch')
+      ) {
+        isProcessingRef.current = false;
+        processingCategoryInfoRef.current = false;
+        setLoading(false);
+      }
+    };
+    
+    // Lắng nghe lỗi trình duyệt
+    window.addEventListener('error', handleError);
+    
+    // Lắng nghe promise rejection
+    window.addEventListener('unhandledrejection', (event) => {
+      handleError({
+        message: `Unhandled Promise rejection: ${event.reason}`,
+        error: event.reason,
+        timestamp: new Date().toISOString()
+      });
+    });
+    
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleError);
+    };
+  }, []);
+  
+  // Lưu trữ rootCategoryId ban đầu khi component mount lần đầu
+  useEffect(() => {
+    if (!originalRootId) {
+      const rootId = getRootCategoryId(location.pathname) || id;
+      console.log('CategoryProducts: Setting originalRootId to', rootId);
+      setOriginalRootId(rootId);
+    }
+  }, [originalRootId, location.pathname, id]);
+  
+  // Kiểm tra nếu đang quay lại từ trang sản phẩm
+  useEffect(() => {
+    const isReturningFromProduct = location.state?.fromProduct;
+    const isBrowserBack = location.action === 'POP';
+    
+    if (isReturningFromProduct || isBrowserBack) {
+      console.log('CategoryProducts: Returning from product page or browser back');
+      
+      // Đánh dấu là đang quay lại trong context
+      setNavigatingBackStatus(true);
+      
+      // Kiểm tra nếu có subcategory đã chọn
+      if (id) {
+        const selectedSubId = getSelectedSubcategory(id);
+        if (selectedSubId) {
+          console.log('CategoryProducts: Found previously selected subcategory', selectedSubId);
+        }
+      }
+      
+      // Xóa trạng thái để không gây lỗi khi làm mới trang
+      if (isReturningFromProduct) {
+        navigate(location.pathname, { 
+          replace: true, 
+          state: { 
+            isBack: true // Thêm cờ isBack để đánh dấu là đang quay lại
+          } 
+        });
+      }
+    } else {
+      // Không phải quay lại, đặt lại trạng thái
+      setNavigatingBackStatus(false);
+    }
+  }, [location, navigate, id, getSelectedSubcategory, setNavigatingBackStatus]);
+  
+  // Xác định rootCategoryId mỗi khi pathname hoặc id thay đổi
+  useEffect(() => {
+    // Ngăn chặn xử lý nếu đang trong quá trình fetch
+    if (isProcessingRef.current) {
+      return;
+    }
+    
+    isProcessingRef.current = true;
+    
+    // Luôn cập nhật rootCategoryId là id hiện tại để lấy đúng sản phẩm
     const rootId = getRootCategoryId(location.pathname) || id;
+    console.log('CategoryProducts: Setting rootCategoryId to', rootId, 'from URL or id:', id);
     setRootCategoryId(rootId);
-  }, [location.pathname, id]);
+    
+    // Đảm bảo subcategories được load cho danh mục phù hợp
+    if (rootId) {
+      const isReturningFromProduct = location.state?.fromProduct;
+      
+      // Nếu có originalRootId, luôn fetch subcategories của danh mục gốc
+      if (originalRootId) {
+        memoizedFetchSubcategories(originalRootId, isReturningFromProduct)
+          .catch(error => {
+            console.error('Failed to fetch subcategories:', error);
+            // Ghi log lỗi MCP
+            mcpErrorsRef.current.push({
+              message: `Failed to fetch subcategories: ${error.message}`,
+              timestamp: new Date().toISOString(),
+              context: { originalRootId, isReturningFromProduct }
+            });
+          });
+      } else {
+        memoizedFetchSubcategories(rootId, isReturningFromProduct)
+          .catch(error => {
+            console.error('Failed to fetch subcategories:', error);
+            // Ghi log lỗi MCP
+            mcpErrorsRef.current.push({
+              message: `Failed to fetch subcategories: ${error.message}`,
+              timestamp: new Date().toISOString(),
+              context: { rootId, isReturningFromProduct }
+            });
+          });
+      }
+    }
+    
+    setTimeout(() => {
+      isProcessingRef.current = false;
+    }, 300);
+  }, [location.pathname, id, memoizedFetchSubcategories, location.state, originalRootId]);
+  
+  // Reset trang về 1 khi id thay đổi
+  useEffect(() => {
+    // Khi id thay đổi, reset trang về 1
+    console.log('CategoryProducts: Detected id change, resetting to page 1');
+    setCurrentPage(1);
+  }, [id]);
   
   // Lấy thông tin category từ ID
   useEffect(() => {
+    // Ngăn chặn xử lý nếu đang trong quá trình fetch hoặc ID chưa thay đổi
+    if (processingCategoryInfoRef.current || id === prevIdRef.current) {
+      return;
+    }
+    
+    processingCategoryInfoRef.current = true;
+    prevIdRef.current = id;
+    
     const fetchCategoryInfo = async () => {
       try {
         const allCategories = await productService.getCategories();
@@ -226,6 +411,16 @@ const CategoryProducts = () => {
         }
       } catch (error) {
         console.error('Failed to fetch category info:', error);
+        // Ghi log lỗi MCP
+        mcpErrorsRef.current.push({
+          message: `Failed to fetch category info: ${error.message}`,
+          timestamp: new Date().toISOString(),
+          context: { id }
+        });
+      } finally {
+        setTimeout(() => {
+          processingCategoryInfoRef.current = false;
+        }, 300);
       }
     };
     
@@ -233,32 +428,85 @@ const CategoryProducts = () => {
   }, [id]);
   
   // Lấy sản phẩm thuộc category
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch products for this category with filters
-        const productData = await productService.getProductsByCategory(id, {
-          include_subcategories: false, // Chỉ lấy sản phẩm trực tiếp của category này
-          page: currentPage,
-          limit: 8,
-          sort: filters.sort,
-          minPrice: filters.minPrice,
-          maxPrice: filters.maxPrice
-        });
-        
-        setProducts(productData);
-        setTotalPages(Math.ceil(productData.length / 8) || 1);
-      } catch (error) {
-        console.error('Failed to fetch products:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchProducts = useCallback(async () => {
+    if (!id) return;
     
+    setLoading(true);
+    try {
+      console.log('===== FETCHING PRODUCTS =====');
+      console.log('Danh mục ID:', id);
+      console.log('Trang hiện tại:', currentPage);
+      console.log('Bộ lọc:', filters);
+      
+      // Xóa cache trước khi gọi API
+      try {
+        localStorage.clear(); // Xóa tất cả localStorage
+        sessionStorage.clear(); // Xóa tất cả sessionStorage
+        console.log('Đã xóa tất cả cache');
+      } catch (e) {
+        console.error('Lỗi khi xóa cache:', e);
+      }
+      
+      // Xác định loại sắp xếp cho API
+      let sort_by = "name";
+      switch(filters.sort) {
+        case 'price-asc': sort_by = "price_asc"; break;
+        case 'price-desc': sort_by = "price_desc"; break;
+        case 'newest': sort_by = "newest"; break;
+        case 'name-asc': sort_by = "name"; break;
+        case 'name-desc': sort_by = "name"; break; // Bổ sung xử lý đảo ngược sau khi nhận kết quả
+        default: sort_by = "name";
+      }
+      
+      const result = await productService.getProductsByCategory(id, {
+        include_subcategories: true,
+        page: currentPage,
+        limit: 9,
+        sort_by: sort_by,
+        minPrice: filters.minPrice,
+        maxPrice: filters.maxPrice
+      });
+
+
+      console.log('Kết quả phân trang:', result);
+      
+      // Kiểm tra chi tiết sản phẩm đầu tiên
+      if (result.products && result.products.length > 0) {
+        console.log('===== CHI TIẾT SẢN PHẨM ĐẦU TIÊN =====');
+        console.log('ID:', result.products[0].id);
+        console.log('Tên:', result.products[0].name);
+        console.log('Giá gốc:', result.products[0].originalPrice);
+        console.log('Giá giảm:', result.products[0].discountPrice);
+        console.log('===== END DETAILS =====');
+      }
+      
+      // Cập nhật state với kết quả phân trang
+      setProducts(filters.sort === 'name-desc' ? [...result.products].reverse() : result.products);
+      setTotalPages(result.pagination.total_pages);
+      
+      // Cập nhật thông tin danh mục nếu có
+      if (result.category && !category) {
+        setCategory(result.category);
+      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      // Ghi log lỗi MCP
+      mcpErrorsRef.current.push({
+        message: `Failed to fetch products: ${error.message}`,
+        timestamp: new Date().toISOString(),
+        context: { id, currentPage, filters }
+      });
+      setProducts([]);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, currentPage, filters, category]);
+  
+  // Fetch sản phẩm khi id, trang hoặc bộ lọc thay đổi
+  useEffect(() => {
     fetchProducts();
-  }, [id, currentPage, filters]);
+  }, [fetchProducts]);
   
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -266,19 +514,36 @@ const CategoryProducts = () => {
   };
   
   const handleSortChange = (e) => {
-    setFilters({
-      ...filters,
+    setFilters(prev => ({
+      ...prev,
       sort: e.target.value
-    });
+    }));
     setCurrentPage(1);
   };
   
   const handleFilterChange = (newFilters) => {
-    setFilters({
-      ...filters,
+    setFilters(prev => ({
+      ...prev,
       ...newFilters
-    });
+    }));
     setCurrentPage(1);
+  };
+  
+  // Hàm truy xuất lỗi MCP cho debug
+  const getMCPErrors = useCallback(() => {
+    return mcpErrorsRef.current;
+  }, []);
+  
+  const calculateAdjustedPrice = (price, unit = 'kg') => {
+    if (!price) return 0;
+    
+    // Nếu đơn vị là gam hoặc ml, không cần điều chỉnh
+    if (unit === 'g' || unit === 'ml') {
+      return price;
+    }
+    
+    // Áp dụng công thức cho đơn vị kg, l, etc.
+    return price * 1000 / (unit === 'kg' || unit === 'l' ? 1 : parseFloat(unit) || 1);
   };
   
   return (
@@ -308,7 +573,7 @@ const CategoryProducts = () => {
         
         <ContentContainer>
           <CategorySidebar 
-            categoryId={rootCategoryId} 
+            categoryId={originalRootId || rootCategoryId} 
             onFilterChange={handleFilterChange}
           />
           
@@ -316,18 +581,12 @@ const CategoryProducts = () => {
             {category && (
               <CategoryHeader>
                 <CategoryTitle>{category.name}</CategoryTitle>
-                {/* <CategoryURL>
-                  URL: <a href={`https://www.bachhoaxanh.com`} target="_blank" rel="noopener noreferrer">
-                    https://www.bachhoaxanh.com/{category.name.toLowerCase().replace(/\s+/g, '-')}
-                  </a>
-                </CategoryURL> */}
-                {/* <CategoryDescription>{category.description}</CategoryDescription> */}
               </CategoryHeader>
             )}
             
             <ProductsHeader>
               <ProductCount>
-                Hiển thị {products.length} sản phẩm
+                {loading ? 'Đang tải...' : `Hiển thị ${products.length} sản phẩm`}
               </ProductCount>
               <SortSelector 
                 value={filters.sort} 
@@ -350,16 +609,17 @@ const CategoryProducts = () => {
                 <ProductGrid>
                   {products.map(product => (
                     <CategoryProductItem 
-                      key={product.product_id} 
+                      key={product.product_id || product.id} 
                       product={{
-                        id: product.product_id,
-                        name: product.name,
-                        originalPrice: product.original_price,
-                        discountPrice: product.discount_price,
-                        discountPercent: product.discount_percent,
-                        image: product.image_url,
-                        rating: 4,
-                        ratingCount: 10
+                        id: product.product_id || product.id,
+                        name: product.name || '',
+                        originalPrice: product.original_price || product.originalPrice || 0,
+                        discountPrice: product.price || product.discountPrice || null,
+                        discountPercent: product.discount_percent || 0,
+                        image: product.image || '',
+                        rating: product.average_rating || 4,
+                        reviewCount: product.review_count || 10,
+                        unit: product.unit || 'kg'
                       }} 
                     />
                   ))}
@@ -375,8 +635,8 @@ const CategoryProducts = () => {
               </>
             ) : (
               <NoProducts>
-                <h3>Không tìm thấy sản phẩm</h3>
-                <p>Không có sản phẩm nào trong danh mục này. Vui lòng thử danh mục khác.</p>
+                <h3>Không tìm thấy sản phẩm nào</h3>
+                <p>Vui lòng thử tìm kiếm với bộ lọc khác hoặc xem các danh mục sản phẩm khác.</p>
               </NoProducts>
             )}
           </MainContent>

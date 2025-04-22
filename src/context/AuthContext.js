@@ -84,23 +84,41 @@ export const AuthProvider = ({ children }) => {
   
   // Thêm console.log để debug quá trình đăng nhập
 
-  const login = async (username, password) => {
+  const login = async (username_or_email, password) => {
     setError(null);
     try {
-      const user = await authService.login(username, password);
-      setCurrentUser(user);
-      return user;
+      // Đăng nhập ban đầu để lấy thông tin cơ bản
+      const basicUser = await authService.login(username_or_email, password);
+      
+      // Cập nhật thông tin user cơ bản ngay lập tức để người dùng được chuyển hướng 
+      setCurrentUser(basicUser);
+      
+      // Sau đó, lấy thêm thông tin chi tiết từ API /api/auth/me và cập nhật lại state
+      // một cách bất đồng bộ để không làm chậm trải nghiệm người dùng
+      setTimeout(async () => {
+        try {
+          const detailedUser = await authService.getCurrentUser();
+          if (detailedUser) {
+            console.log('Updating user with detailed info from /api/auth/me');
+            setCurrentUser(detailedUser);
+          }
+        } catch (error) {
+          console.error('Failed to get detailed user info:', error);
+          // Không hiển thị lỗi này cho người dùng vì họ đã đăng nhập thành công
+        }
+      }, 0);
+      
+      return basicUser;
     } catch (error) {
       setError(error.message || 'Login failed');
+      // Đảm bảo lỗi được truyền đầy đủ với thông tin response
       throw error;
     }
   };
 
-  const register = async (name, email, phone, password) => {
+  const register = async (name, email, phone, password, username) => {
     setError(null);
     try {
-      // Tạo username dựa trên email hoặc sử dụng email làm username
-      const username = email.split('@')[0];
       const user = await authService.register(username, name, email, phone, password);
       return user;
     } catch (error) {
@@ -151,6 +169,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateAvatar = async (avatarFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', avatarFile);
+      
+      const result = await authService.updateAvatar(formData);
+      if (result && result.avatar_url) {
+        // Cập nhật thông tin user trong context để cập nhật UI toàn ứng dụng
+        setCurrentUser(prevUser => ({
+          ...prevUser,
+          avatar_url: result.avatar_url
+        }));
+        return result;
+      }
+      return null;
+    } catch (error) {
+      setError(error.message || 'Avatar update failed');
+      throw error;
+    }
+  };
+
   const changePassword = async (currentPassword, newPassword) => {
     try {
       await authService.changePassword(currentPassword, newPassword);
@@ -180,6 +219,7 @@ export const AuthProvider = ({ children }) => {
     loginWithGoogle,
     loginWithFacebook,
     updateProfile,
+    updateAvatar,
     changePassword,
     resetPassword,
     user: currentUser,

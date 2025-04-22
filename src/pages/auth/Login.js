@@ -11,15 +11,8 @@ import { AuthContext } from '../../context/AuthContext';
 const LoginContainer = styled.div`
   max-width: 700px;
   width: 100%;
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  padding: 30px;
-=======
-=======
->>>>>>> Stashed changes
   margin: 0 auto;
   padding: 15px 25px;
->>>>>>> Stashed changes
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   background: white;
@@ -29,30 +22,31 @@ const LoginContainer = styled.div`
 const LoginTitle = styled.h1`
   text-align: center;
   color: #0A4D7C;
-  font-size: 28px;
-  margin-bottom: 30px;
+  font-size: 22px;
+  margin-bottom: 12px;
 `;
 
 const FormGroup = styled.div`
-  margin-bottom: 25px;
-  min-height: 90px;
+  margin-bottom: 12px;
+  min-height: 65px;
   position: relative;
-  padding-bottom: 20px;
+  padding-bottom: 8px;
 `;
 
 const Label = styled.label`
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   color: #333;
   font-weight: 500;
+  font-size: 13px;
 `;
 
 const Input = styled(Field)`
   width: 100%;
-  padding: 12px 15px;
+  padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 16px;
+  font-size: 13px;
   &:focus {
     outline: none;
     border-color: #0A4D7C;
@@ -65,13 +59,14 @@ const PasswordContainer = styled.div`
 
 const PasswordToggle = styled.button`
   position: absolute;
-  right: 15px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
   color: #666;
+  font-size: 13px;
   &:hover {
     color: #333;
   }
@@ -79,9 +74,9 @@ const PasswordToggle = styled.button`
 
 const ErrorText = styled.div`
   color: #d32f2f;
-  font-size: 14px;
-  margin-top: 5px;
-  min-height: 20px;
+  font-size: 11px;
+  margin-top: 2px;
+  min-height: 14px;
   display: block;
   position: absolute;
 `;
@@ -89,10 +84,10 @@ const ErrorText = styled.div`
 const ForgotPassword = styled(Link)`
   display: block;
   text-align: right;
-  margin-top: 10px;
+  margin-top: 5px;
   color: #0A4D7C;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 12px;
   &:hover {
     text-decoration: underline;
   }
@@ -101,7 +96,7 @@ const ForgotPassword = styled(Link)`
 const OrDivider = styled.div`
   display: flex;
   align-items: center;
-  margin: 20px 0;
+  margin: 15px 0;
   &:before, &:after {
     content: '';
     flex: 1;
@@ -110,14 +105,14 @@ const OrDivider = styled.div`
   span {
     margin: 0 10px;
     color: #666;
-    font-size: 14px;
+    font-size: 12px;
   }
 `;
 
 const SocialButtons = styled.div`
   display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 10px;
 `;
 
 const SocialButton = styled.button`
@@ -125,16 +120,17 @@ const SocialButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 8px 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
   cursor: pointer;
   transition: all 0.2s;
+  font-size: 13px;
   
   svg {
-    margin-right: 10px;
-    font-size: 18px;
+    margin-right: 8px;
+    font-size: 16px;
   }
   
   &:hover {
@@ -156,9 +152,9 @@ const FacebookButton = styled(SocialButton)`
 
 const SignupPrompt = styled.div`
   text-align: center;
-  margin-top: 30px;
+  margin-top: 12px;
   color: #666;
-  font-size: 14px;
+  font-size: 13px;
   
   a {
     color: #0A4D7C;
@@ -178,34 +174,23 @@ const Login = () => {
   const location = useLocation();
 
   const redirectPath = location.state?.from || '/';
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  
-=======
-
   const [blockedAccountError, setBlockedAccountError] = useState(false);
 
->>>>>>> Stashed changes
-=======
-
-  const [blockedAccountError, setBlockedAccountError] = useState(false);
-
->>>>>>> Stashed changes
   const initialValues = {
-    username: '',
+    username_or_email: '',
     password: ''
   };
 
   const validationSchema = Yup.object({
-    username: Yup.string()
-      .required('Tên đăng nhập là trường bắt buộc'),
+    username_or_email: Yup.string()
+      .required('Tên đăng nhập hoặc email là trường bắt buộc'),
     password: Yup.string()
       .required('Mật khẩu là trường bắt buộc')
   });
 
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
-      await login(values.username, values.password);
+      await login(values.username_or_email, values.password);
       navigate(redirectPath, { replace: true });
     } catch (error) {
       setFieldError('password', 'Tên đăng nhập hoặc mật khẩu không chính xác');
@@ -236,12 +221,6 @@ const Login = () => {
     <AuthLayout>
       <LoginContainer>
         <LoginTitle>Đăng Nhập</LoginTitle>
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        
-=======
-=======
->>>>>>> Stashed changes
 
         {blockedAccountError && (
           <div style={{
@@ -257,10 +236,6 @@ const Login = () => {
           </div>
         )}
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -269,29 +244,14 @@ const Login = () => {
           {({ isSubmitting }) => (
             <Form>
               <FormGroup>
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                <Label htmlFor="username">Tên đăng nhập</Label>
-                <Input 
-                  type="text" 
-                  id="username" 
-                  name="username" 
-                  placeholder="Nhập tên đăng nhập" 
-=======
-=======
->>>>>>> Stashed changes
                 <Label htmlFor="username_or_email">Tên đăng nhập hoặc Email</Label>
                 <Input
                   type="text"
                   id="username_or_email"
                   name="username_or_email"
                   placeholder="Nhập tên đăng nhập hoặc email"
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 />
-                <ErrorMessage name="username" component={ErrorText} />
+                <ErrorMessage name="username_or_email" component={ErrorText} />
               </FormGroup>
 
               <FormGroup>
@@ -330,44 +290,16 @@ const Login = () => {
         <OrDivider>
           <span>Hoặc đăng nhập / đăng ký với</span>
         </OrDivider>
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        
-        <SocialButtons>
-=======
-=======
->>>>>>> Stashed changes
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '5px' }}>
->>>>>>> Stashed changes
           <GoogleButton onClick={handleGoogleLogin}>
             <FaGoogle /> Tiếp tục với Google
           </GoogleButton>
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        </SocialButtons>
-        <SocialButtons>
-=======
-
->>>>>>> Stashed changes
-=======
-
->>>>>>> Stashed changes
           <FacebookButton onClick={handleFacebookLogin}>
             <FaFacebook /> Tiếp tục với Facebook
           </FacebookButton>
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        </SocialButtons>
-        
-=======
         </div>
 
->>>>>>> Stashed changes
-=======
-        </div>
-
->>>>>>> Stashed changes
         <SignupPrompt>
           Chưa có tài khoản?
           <Link to="/register">Đăng ký</Link>

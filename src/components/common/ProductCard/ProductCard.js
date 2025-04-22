@@ -21,6 +21,7 @@ const ImageContainer = styled.div`
   position: relative;
   overflow: hidden;
   height: 200px;
+  background: #f5f5f5;
   
   img {
     width: 100%;
@@ -31,6 +32,15 @@ const ImageContainer = styled.div`
   
   &:hover img {
     transform: scale(1.05);
+  }
+  
+  .no-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #999;
+    font-size: 14px;
   }
 `;
 
@@ -137,15 +147,35 @@ const ProductCard = ({ product }) => {
     addToCart(product, 1);
   };
   
+  // Hiển thị log cho debug
+  console.log("ProductCard rendering for:", product.name, "with ID:", product.id);
+  console.log("Image data:", { image: product.image, images: product.images });
+  
+  // Xác định giá hiển thị
+  const currentPrice = product.discountPrice ? product.discountPrice : product.originalPrice;
   const discountPercentage = product.discountPrice 
     ? Math.round(((product.originalPrice - product.discountPrice) / product.originalPrice) * 100) 
     : 0;
+  
+  // Lấy ảnh chính
+  const productImage = product.image || (product.images && product.images.length > 0 ? product.images[0] : 'https://via.placeholder.com/300x300?text=No+Image');
   
   return (
     <Card>
       <ImageContainer>
         <Link to={`/products/${product.id}`}>
-          <img src={product.image} alt={product.name} />
+          {productImage ? (
+            <img 
+              src={productImage} 
+              alt={product.name}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://via.placeholder.com/300x300?text=Error+Loading';
+              }}
+            />
+          ) : (
+            <div className="no-image">Không có hình ảnh</div>
+          )}
         </Link>
         {discountPercentage > 0 && (
           <DiscountBadge>{discountPercentage}% OFF</DiscountBadge>
@@ -159,12 +189,12 @@ const ProductCard = ({ product }) => {
           {[...Array(5)].map((_, i) => (
             <FaStar key={i} color={i < Math.floor(product.rating) ? "#FFD700" : "#e4e5e9"} />
           ))}
-          <span>({product.reviewCount})</span>
+          <span>({product.reviewCount || 0})</span>
         </Rating>
         <Price>
-          <span className="current">{product.discountPrice || product.originalPrice}đ</span>
+          <span className="current">{Math.round(currentPrice).toLocaleString()}đ/{product.unit || 'kg'}</span>
           {product.discountPrice && (
-            <span className="original">{product.originalPrice}đ</span>
+            <span className="original">{Math.round(product.originalPrice).toLocaleString()}đ</span>
           )}
         </Price>
         <AddToCartButton onClick={handleAddToCart}>

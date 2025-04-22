@@ -77,13 +77,13 @@ const OrderProductItem = ({ item }) => {
         </ProductInfo>
       </ProductCell>
       <ProductCell>
-        <ProductPrice>{item.price.toLocaleString()}đ</ProductPrice>
+        <ProductPrice>{Math.round(item.price).toLocaleString()}đ/{item.product.unit || 'kg'}</ProductPrice>
       </ProductCell>
       <ProductCell>
         <ProductQuantity>{item.quantity}</ProductQuantity>
       </ProductCell>
       <ProductCell>
-        <ProductTotal>{(item.price * item.quantity).toLocaleString()}đ</ProductTotal>
+        <ProductTotal>{Math.round(item.price * item.quantity).toLocaleString()}đ</ProductTotal>
       </ProductCell>
     </ProductRow>
   );

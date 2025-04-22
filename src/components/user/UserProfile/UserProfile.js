@@ -171,7 +171,11 @@ const UserProfile = ({ activeTab = 'profile', children, onTabChange }) => {
       <Sidebar>
         <UserInfo>
           <Avatar>
-            <img src="https://via.placeholder.com/80" alt="User Avatar" />
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="User Avatar" />
+            ) : (
+              <FaUser style={{ fontSize: '30px', color: '#ddd' }} />
+            )}
           </Avatar>
           <UserName>{user?.full_name || 'Chưa cập nhật'}</UserName>
           <UserEmail>{user?.email || 'Chưa cập nhật'}</UserEmail>

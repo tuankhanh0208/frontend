@@ -129,7 +129,7 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register } = useContext(AuthContext);
   const navigate = useNavigate();
-  
+
   const initialValues = {
     name: '',
     username: '',
@@ -139,7 +139,7 @@ const Register = () => {
     confirmPassword: '',
     acceptTerms: false
   };
-  
+
   const validationSchema = Yup.object({
     name: Yup.string()
       .required('Họ và tên là trường bắt buộc'),
@@ -162,7 +162,7 @@ const Register = () => {
     acceptTerms: Yup.boolean()
       .oneOf([true], 'Bạn phải đồng ý với điều khoản để đăng ký')
   });
-  
+
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
       await register(values.name, values.email, values.phone, values.password, values.username);
@@ -173,12 +173,12 @@ const Register = () => {
       setSubmitting(false);
     }
   };
-  
+
   return (
     <AuthLayout>
       <RegisterContainer>
         <RegisterTitle>Hoàn tất đăng ký</RegisterTitle>
-        
+
         <Formik
           initialValues={initialValues}
           validationSchema={validationSchema}
@@ -194,7 +194,7 @@ const Register = () => {
                   <Input type="text" id="name" name="name" />
                   <ErrorMessage name="name" component={ErrorText} />
                 </FormGroup>
-                
+
                 <FormGroup style={{ flex: 1 }}>
                   <Label htmlFor="username">
                     Tên đăng nhập <span className="required">*</span>
@@ -203,14 +203,14 @@ const Register = () => {
                   <ErrorMessage name="username" component={ErrorText} />
                 </FormGroup>
               </div>
-              
+
               <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                 <FormGroup style={{ flex: 1 }}>
                   <Label htmlFor="email">Email <span className="required">*</span></Label>
                   <Input type="email" id="email" name="email" />
                   <ErrorMessage name="email" component={ErrorText} />
                 </FormGroup>
-                
+
                 <FormGroup style={{ flex: 1 }}>
                   <Label htmlFor="phone">
                     Số điện thoại <span className="required">*</span>
@@ -219,20 +219,20 @@ const Register = () => {
                   <ErrorMessage name="phone" component={ErrorText} />
                 </FormGroup>
               </div>
-              
+
               <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                 <FormGroup style={{ flex: 1 }}>
                   <Label htmlFor="password">
                     Mật khẩu <span className="required">*</span>
                   </Label>
                   <PasswordContainer>
-                    <Input 
-                      type={showPassword ? "text" : "password"} 
-                      id="password" 
-                      name="password" 
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      name="password"
                     />
-                    <PasswordToggle 
-                      type="button" 
+                    <PasswordToggle
+                      type="button"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -240,19 +240,19 @@ const Register = () => {
                   </PasswordContainer>
                   <ErrorMessage name="password" component={ErrorText} />
                 </FormGroup>
-                
+
                 <FormGroup style={{ flex: 1 }}>
                   <Label htmlFor="confirmPassword">
                     Nhập lại mật khẩu <span className="required">*</span>
                   </Label>
                   <PasswordContainer>
-                    <Input 
-                      type={showConfirmPassword ? "text" : "password"} 
-                      id="confirmPassword" 
-                      name="confirmPassword" 
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      id="confirmPassword"
+                      name="confirmPassword"
                     />
-                    <PasswordToggle 
-                      type="button" 
+                    <PasswordToggle
+                      type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
@@ -261,7 +261,7 @@ const Register = () => {
                   <ErrorMessage name="confirmPassword" component={ErrorText} />
                 </FormGroup>
               </div>
-              
+
               <TermsCheckbox>
                 <Field type="checkbox" id="acceptTerms" name="acceptTerms" />
                 <label htmlFor="acceptTerms">
@@ -269,12 +269,12 @@ const Register = () => {
                 </label>
               </TermsCheckbox>
               <ErrorMessage name="acceptTerms" component={ErrorText} />
-              
-              <Button 
-                type="submit" 
-                variant="secondary" 
-                fullWidth 
-                size="large" 
+
+              <Button
+                type="submit"
+                variant="secondary"
+                fullWidth
+                size="large"
                 disabled={isSubmitting}
               >
                 Hoàn tất
@@ -282,7 +282,7 @@ const Register = () => {
             </Form>
           )}
         </Formik>
-        
+
         <LoginPrompt>
           Đã có tài khoản?
           <Link to="/login">Đăng nhập</Link>

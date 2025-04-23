@@ -175,7 +175,7 @@ const LoadingSpinner = styled.div`
 const CategoryList = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -190,10 +190,10 @@ const CategoryList = () => {
         setLoading(false);
       }
     };
-    
+
     fetchCategories();
   }, []);
-  
+
   return (
     <MainLayout>
       <PageContainer>
@@ -212,15 +212,15 @@ const CategoryList = () => {
             </li>
           </ul>
         </BreadcrumbNav>
-        
+
         <PageHeader>
           <PageTitle>Danh mục sản phẩm</PageTitle>
           <PageDescription>
-            Khám phá các danh mục sản phẩm đa dạng của chúng tôi với thực phẩm tươi sống, 
+            Khám phá các danh mục sản phẩm đa dạng của chúng tôi với thực phẩm tươi sống,
             thực phẩm chế biến sẵn và nhiều loại thực phẩm khác đảm bảo chất lượng và an toàn.
           </PageDescription>
         </PageHeader>
-        
+
         {loading ? (
           <LoadingSpinner>
             Đang tải danh mục sản phẩm...
@@ -230,12 +230,12 @@ const CategoryList = () => {
             {categories.map(category => (
               <CategoryCard key={category.category_id}>
                 <CategoryImageContainer>
-                  <img src={category.image_url || `/images/categories/default.jpg`} alt={category.name} />
+                  <img src={category.description || `/images/categories/default.jpg`} alt={category.name} />
                 </CategoryImageContainer>
                 <CategoryContent>
                   <CategoryName>
                     <Link to={`/categories/${category.category_id}`}>{category.name}</Link>
-                  </CategoryName>                  
+                  </CategoryName>
                   <ViewButton to={`/categories/${category.category_id}`}>
                     Xem sản phẩm
                   </ViewButton>

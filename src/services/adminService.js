@@ -69,7 +69,7 @@ const adminService = {
         adminService.getRecentOrders(orderLimit, bypassCache),
         adminService.getRevenueOverview(revenueMode, bypassCache)
       ]);
-      
+
       return {
         stats,
         recentOrders: recentOrders.orders,
@@ -190,11 +190,11 @@ const adminService = {
       let params = new URLSearchParams();
       params.append('skip', skip);
       params.append('limit', limit);
-      
+
       if (categoryId) params.append('category_id', categoryId);
       if (search) params.append('search', search);
       if (stockStatus) params.append('stock_status', stockStatus);
-      
+
       const response = await api.get(`/api/admin/manage/products?${params.toString()}`);
       return response.data;
     } catch (error) {
@@ -214,7 +214,7 @@ const adminService = {
       try {
         console.log(`Đang lấy thông tin sản phẩm ID ${productId} từ API admin`);
         const response = await api.get(`/api/admin/manage/products/${productId}`);
-        
+
         // Đảm bảo dữ liệu hình ảnh đúng định dạng
         const productData = response.data;
         if (productData.images) {
@@ -227,15 +227,15 @@ const adminService = {
             return img;
           });
         }
-        
+
         return productData;
       } catch (adminError) {
         console.warn(`Admin API không trả về dữ liệu sản phẩm ID ${productId}, thử dùng API public`, adminError);
-        
+
         // Nếu API admin không hoạt động (ví dụ: vấn đề xác thực), thử dùng API public
         try {
           const response = await api.get(`/api/e-commerce/products/${productId}`);
-          
+
           // Đảm bảo dữ liệu hình ảnh đúng định dạng
           const productData = response.data;
           if (productData.images) {
@@ -248,11 +248,11 @@ const adminService = {
               return img;
             });
           }
-          
+
           return productData;
         } catch (publicError) {
           console.error(`Cả API admin và public đều không lấy được sản phẩm ID ${productId}`, publicError);
-          
+
           // Nếu tất cả các API đều thất bại, tạo dữ liệu mẫu
           console.warn(`Generating mock data for product ID ${productId}`);
           return {
@@ -286,30 +286,41 @@ const adminService = {
    */
   addProduct: async (productData) => {
     try {
-      // Tạo FormData để gửi cả dữ liệu và file ảnh
-      const formData = new FormData();
-      
-      // Thêm dữ liệu sản phẩm vào FormData
-      Object.keys(productData).forEach(key => {
-        if (key === 'image' && productData[key] instanceof File) {
-          // Nếu là file ảnh, thêm vào form data với key 'file'
-          formData.append('file', productData[key]);
-        } else if (key !== 'image' || (key === 'image' && typeof productData[key] === 'string')) {
-          // Các trường khác hoặc trường image là URL (string)
-          formData.append(key, productData[key]);
-        }
+      // Log dữ liệu trước khi gửi
+      console.log('Product data before sending:', {
+        name: productData.get('name'),
+        description: productData.get('description'),
+        price: productData.get('price'),
+        original_price: productData.get('original_price'),
+        stock_quantity: productData.get('stock_quantity'),
+        is_featured: productData.get('is_featured'),
+        category_id: productData.get('category_id'),
+        unit: productData.get('unit'),
+        files: productData.getAll('files')
       });
-      
-      const response = await api.post('/api/admin/manage/products', formData, {
+
+      const response = await api.post('/api/admin/manage/products', productData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       return response.data;
     } catch (error) {
       console.error('Lỗi khi thêm sản phẩm:', error);
-      throw new Error(error.response?.data?.detail || 'Không thể thêm sản phẩm');
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        // Xử lý lỗi validation
+        if (error.response.status === 422) {
+          const errorDetails = error.response.data.detail;
+          const errorMessage = Array.isArray(errorDetails)
+            ? errorDetails.map(err => err.msg).join(', ')
+            : errorDetails;
+          throw new Error(errorMessage);
+        }
+        throw new Error(error.response.data.detail || 'Có lỗi xảy ra khi thêm sản phẩm');
+      }
+      throw new Error('Không thể kết nối đến máy chủ');
     }
   },
 
@@ -321,30 +332,42 @@ const adminService = {
    */
   updateProduct: async (productId, productData) => {
     try {
-      // Tạo FormData để gửi cả dữ liệu và file ảnh
-      const formData = new FormData();
-      
-      // Thêm dữ liệu sản phẩm vào FormData
-      Object.keys(productData).forEach(key => {
-        if (key === 'image' && productData[key] instanceof File) {
-          // Nếu là file ảnh, thêm vào form data với key 'file'
-          formData.append('file', productData[key]);
-        } else if (key !== 'image' || (key === 'image' && typeof productData[key] === 'string')) {
-          // Các trường khác hoặc trường image là URL (string)
-          formData.append(key, productData[key]);
-        }
+      // Log dữ liệu trước khi gửi
+      console.log('Update product data:', {
+        productId,
+        name: productData.get('name'),
+        description: productData.get('description'),
+        price: productData.get('price'),
+        original_price: productData.get('original_price'),
+        stock_quantity: productData.get('stock_quantity'),
+        is_featured: productData.get('is_featured'),
+        category_id: productData.get('category_id'),
+        unit: productData.get('unit'),
+        files: productData.getAll('files'),
+        deletedImages: productData.get('deleted_images')
       });
-      
-      const response = await api.put(`/api/admin/manage/products/${productId}`, formData, {
+
+      const response = await api.put(`/api/admin/manage/products/${productId}`, productData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       return response.data;
     } catch (error) {
       console.error(`Lỗi khi cập nhật sản phẩm ID ${productId}:`, error);
-      throw new Error(error.response?.data?.detail || 'Không thể cập nhật sản phẩm');
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        if (error.response.status === 422) {
+          const errorDetails = error.response.data.detail;
+          const errorMessage = Array.isArray(errorDetails)
+            ? errorDetails.map(err => err.msg).join(', ')
+            : errorDetails;
+          throw new Error(errorMessage);
+        }
+        throw new Error(error.response.data.detail || 'Có lỗi xảy ra khi cập nhật sản phẩm');
+      }
+      throw new Error('Không thể kết nối đến máy chủ');
     }
   },
 
@@ -405,19 +428,19 @@ const adminService = {
   getCategories: async (skip = 0, limit = 10, subcategories_only = true) => {
     try {
       try {
-        const response = await api.get('/api/admin/manage/categories', { 
-          params: { 
-            skip, 
-            limit, 
-            subcategories_only 
+        const response = await api.get('/api/admin/manage/categories', {
+          params: {
+            skip,
+            limit,
+            subcategories_only
           }
         });
-        
+
         console.log('Danh mục từ API:', response.data);
-        
+
         // Lấy các danh mục từ dữ liệu API
         const categories = response.data.categories || [];
-        
+
         // Trả về dữ liệu đã định dạng
         return {
           items: categories,
@@ -428,7 +451,7 @@ const adminService = {
       } catch (apiError) {
         if (apiError.response?.status === 404) {
           console.warn('Categories API endpoint not found, generating mock data for development');
-          
+
           // Return mock data for development with parent_id != null
           const mockCategories = [
             { category_id: 1, name: 'Rau củ', description: 'Các loại rau củ tươi ngon', level: 2, parent_id: 10, parent_name: 'Thực phẩm' },
@@ -437,7 +460,7 @@ const adminService = {
             { category_id: 4, name: 'Hải sản tươi', description: 'Các loại hải sản tươi ngon', level: 2, parent_id: 11, parent_name: 'Đồ tươi sống' },
             { category_id: 5, name: 'Thực phẩm đông lạnh', description: 'Các loại thực phẩm đông lạnh', level: 2, parent_id: 12, parent_name: 'Đông lạnh' }
           ];
-          
+
           return {
             items: mockCategories,
             total: mockCategories.length,

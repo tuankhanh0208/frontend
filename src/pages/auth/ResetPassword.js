@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
@@ -7,6 +7,7 @@ import { FaEye, FaEyeSlash, FaArrowLeft } from 'react-icons/fa';
 import AuthLayout from '../../layouts/AuthLayout';
 import Button from '../../components/common/Button/Button';
 import authService from '../../services/authService';
+import { toast } from 'react-hot-toast';
 
 const ResetContainer = styled.div`
   max-width: 500px;
@@ -128,6 +129,13 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const { token } = useParams();
 
+  useEffect(() => {
+    if (!token) {
+      toast.error('Token đặt lại mật khẩu không hợp lệ');
+      navigate('/login');
+    }
+  }, [token, navigate]);
+
   const initialValues = {
     password: '',
     confirmPassword: ''
@@ -148,13 +156,18 @@ const ResetPassword = () => {
 
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
-      await authService.confirmResetPassword(token, values.password);
+      console.log('Submitting reset password with token:', token);
+      await authService.resetPassword(token, values.password);
       setResetSuccess(true);
+      toast.success('Mật khẩu đã được đặt lại thành công!');
       setTimeout(() => {
         navigate('/login');
       }, 3000);
     } catch (error) {
-      setFieldError('password', 'Không thể đặt lại mật khẩu. Token có thể đã hết hạn.');
+      console.error('Reset password error:', error);
+      const errorMessage = error.message || 'Không thể đặt lại mật khẩu. Token có thể đã hết hạn.';
+      setFieldError('password', errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

@@ -2,20 +2,6 @@
 import api from './api';
 import jwtDecode from 'jwt-decode';
 import Cookies from 'js-cookie';
-import axios from 'axios';
-import emailjs from '@emailjs/browser';
-
-const API_URL = 'http://localhost:8000/api/auth';
-
-// EmailJS Configuration
-const EMAILJS_CONFIG = {
-  PUBLIC_KEY: '4htwbn8aneB46zmje',
-  SERVICE_ID: 'service_u7ozvqm',  // Verify this ID in your EmailJS dashboard
-  TEMPLATE_ID: 'template_cz37etl', // Verify this ID in your EmailJS dashboard
-};
-
-// Initialize EmailJS
-emailjs.init(EMAILJS_CONFIG.PUBLIC_KEY);
 
 // Token storage keys
 export const TOKEN_STORAGE = {
@@ -483,133 +469,21 @@ const authService = {
     }
   },
 
-  // Request password reset (forgot password)
-  forgotPassword: async (email) => {
+  // Reset password (request reset link)
+  resetPassword: async (email) => {
     try {
-      console.log('Starting password reset process for email:', email);
-
-      // Validate email format
-      if (!email || !email.includes('@')) {
-        throw new Error('Email không hợp lệ');
-      }
-
-      // First check if email exists in database
-      try {
-        console.log('Checking if email exists in database...');
-        const checkResponse = await axios.post(`${API_URL}/check-email`, { email });
-
-        if (!checkResponse.data.exists) {
-          console.log('Email not found in database');
-          // Return success even if email doesn't exist (security best practice)
-          return {
-            message: 'Nếu email của bạn đã đăng ký, bạn sẽ nhận được liên kết đặt lại mật khẩu'
-          };
-        }
-      } catch (error) {
-        console.error('Error checking email:', error);
-        // Continue with reset process even if check fails
-      }
-
-      // Get the reset token from backend
-      console.log('Calling backend forgot-password endpoint...');
-      const response = await axios.post(`${API_URL}/forgot-password`, {
-        email,
-        reset_url_base: window.location.origin
-      });
-
-      console.log('Backend response:', response.data);
-
-      if (!response.data.reset_url) {
-        console.error('No reset URL in response');
-        throw new Error('Không thể tạo liên kết đặt lại mật khẩu');
-      }
-
-      // Validate EmailJS configuration
-      if (!EMAILJS_CONFIG.SERVICE_ID || !EMAILJS_CONFIG.TEMPLATE_ID) {
-        console.error('Missing EmailJS configuration');
-        throw new Error('Cấu hình email không hợp lệ');
-      }
-
-      // Prepare template parameters - match exactly with template variables
-      const templateParams = {
-        message: 'Bạn đã yêu cầu đặt lại mật khẩu. Vui lòng nhấp vào liên kết bên dưới để đặt lại mật khẩu của bạn:',
-        reset_link: response.data.reset_url,
-        to_email: email // This is required by EmailJS for the recipient
-      };
-
-      // Send email using EmailJS
-      console.log('Sending email using EmailJS...');
-      try {
-        console.log('Sending email with params:', templateParams);
-
-        // Log the exact configuration being used
-        console.log('EmailJS Configuration:', {
-          serviceId: EMAILJS_CONFIG.SERVICE_ID,
-          templateId: EMAILJS_CONFIG.TEMPLATE_ID,
-          publicKey: EMAILJS_CONFIG.PUBLIC_KEY
-        });
-
-        const emailResponse = await emailjs.send(
-          EMAILJS_CONFIG.SERVICE_ID,
-          EMAILJS_CONFIG.TEMPLATE_ID,
-          templateParams,
-          EMAILJS_CONFIG.PUBLIC_KEY
-        );
-
-        console.log('EmailJS response:', emailResponse);
-
-        if (emailResponse.status !== 200) {
-          throw new Error('Email sending failed with status: ' + emailResponse.status);
-        }
-
-        // Return success message
-        return {
-          message: 'Nếu email của bạn đã đăng ký, bạn sẽ nhận được liên kết đặt lại mật khẩu'
-        };
-      } catch (emailError) {
-        console.error('EmailJS error:', emailError);
-        // Check for specific EmailJS errors
-        if (emailError.text && emailError.text.includes('recipients address is empty')) {
-          console.error('EmailJS template configuration:', {
-            serviceId: EMAILJS_CONFIG.SERVICE_ID,
-            templateId: EMAILJS_CONFIG.TEMPLATE_ID,
-            templateParams: templateParams
-          });
-          throw new Error('Lỗi cấu hình email: Vui lòng kiểm tra lại template EmailJS');
-        } else if (emailError.text && emailError.text.includes('service ID not found')) {
-          throw new Error('Lỗi cấu hình email: Service ID không hợp lệ');
-        } else if (emailError.text && emailError.text.includes('template ID not found')) {
-          throw new Error('Lỗi cấu hình email: Template ID không hợp lệ');
-        } else {
-          throw new Error('Không thể gửi email đặt lại mật khẩu: ' + (emailError.text || emailError.message));
-        }
-      }
+      await api.post('/api/auth/forgot-password', { email });
     } catch (error) {
-      console.error('Forgot password error:', error);
-      if (error.response?.data?.detail) {
-        throw new Error(error.response.data.detail);
-      }
-      throw error; // Throw the original error with more specific message
+      throw new Error(error.response?.data?.message || 'Yêu cầu đặt lại mật khẩu thất bại');
     }
   },
 
-  // Reset password with token
-  resetPassword: async (resetToken, newPassword) => {
+  // Confirm reset password with token
+  confirmResetPassword: async (token, newPassword) => {
     try {
-      console.log('Resetting password with token:', resetToken);
-
-      const response = await axios.post(`${API_URL}/reset-password`, {
-        reset_token: resetToken,
-        new_password: newPassword
-      });
-
-      return response.data;
+      await api.post('/api/auth/reset-password', { token, newPassword });
     } catch (error) {
-      console.error('Reset password error:', error);
-      if (error.response?.data?.detail) {
-        throw new Error(error.response.data.detail);
-      }
-      throw new Error('Đặt lại mật khẩu thất bại');
+      throw new Error(error.response?.data?.message || 'Đặt lại mật khẩu thất bại');
     }
   },
 
@@ -706,18 +580,6 @@ const authService = {
     } catch (error) {
       console.error('Error syncing cart:', error);
       throw error;
-    }
-  },
-
-  resetPassword: async (resetToken, newPassword) => {
-    try {
-      const response = await axios.post(`${API_URL}/reset-password`, {
-        reset_token: resetToken,
-        new_password: newPassword
-      });
-      return response.data;
-    } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Đặt lại mật khẩu thất bại');
     }
   }
 };

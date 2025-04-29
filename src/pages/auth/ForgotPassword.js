@@ -7,6 +7,7 @@ import { FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import AuthLayout from '../../layouts/AuthLayout';
 import Button from '../../components/common/Button/Button';
 import authService from '../../services/authService';
+import { toast } from 'react-hot-toast';
 
 const ForgotContainer = styled.div`
   max-width: 500px;
@@ -103,6 +104,7 @@ const SuccessMessage = styled.div`
 
 const ForgotPassword = () => {
   const [emailSent, setEmailSent] = useState(false);
+  const [error, setError] = useState(null);
 
   const initialValues = {
     email: ''
@@ -116,10 +118,16 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
     try {
-      await authService.resetPassword(values.email);
+      // Call the forgot password endpoint
+      await authService.forgotPassword(values.email);
       setEmailSent(true);
+      setError(null);
+      toast.success('Email đặt lại mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư đến của bạn.');
     } catch (error) {
-      setFieldError('email', 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.');
+      const errorMessage = error.message || 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.';
+      setError(errorMessage);
+      setFieldError('email', errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -130,6 +138,12 @@ const ForgotPassword = () => {
       <ForgotContainer>
         <ForgotTitle>Quên mật khẩu</ForgotTitle>
         <Subtitle>Nhập email của bạn để đặt lại mật khẩu</Subtitle>
+
+        {error && (
+          <ErrorText style={{ position: 'static', marginBottom: '20px' }}>
+            {error}
+          </ErrorText>
+        )}
 
         {emailSent && (
           <SuccessMessage>

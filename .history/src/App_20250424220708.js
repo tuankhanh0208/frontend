@@ -88,11 +88,6 @@ const App = () => {
                           <ForgotPassword />
                         </AuthLayout>
                       } />
-                      <Route path="/reset-password/:token" element={
-                        <AuthLayout>
-                          <ResetPassword />
-                        </AuthLayout>
-                      } />
 
                       {/* Protected User Routes */}
                       <Route path="/checkout" element={

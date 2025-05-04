@@ -1,10 +1,11 @@
 // src/pages/CategoryList.js
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FaHome, FaAngleRight } from 'react-icons/fa';
 import MainLayout from '../layouts/MainLayout';
 import productService from '../services/productService';
+import { useAuth } from '../context/AuthContext';
 
 const PageContainer = styled.div`
   max-width: 1200px;
@@ -172,27 +173,49 @@ const LoadingSpinner = styled.div`
   font-size: 18px;
 `;
 
+const ErrorMessage = styled.div`
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 4px;
+  margin: 20px 0;
+  text-align: center;
+`;
+
 const CategoryList = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await productService.getCategories();
         // Lọc ra chỉ các categories chính (không có parent_id)
         const mainCategories = data.filter(category => !category.parent_id);
         setCategories(mainCategories);
       } catch (error) {
         console.error('Failed to fetch categories:', error);
+        if (error.response?.status === 401) {
+          setError('Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.');
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            navigate('/login', { state: { from: '/categories' } });
+          }, 2000);
+        } else {
+          setError('Có lỗi xảy ra khi tải danh mục sản phẩm. Vui lòng thử lại sau.');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchCategories();
-  }, []);
+  }, [navigate]);
 
   return (
     <MainLayout>
@@ -220,6 +243,8 @@ const CategoryList = () => {
             thực phẩm chế biến sẵn và nhiều loại thực phẩm khác đảm bảo chất lượng và an toàn.
           </PageDescription>
         </PageHeader>
+
+        {error && <ErrorMessage>{error}</ErrorMessage>}
 
         {loading ? (
           <LoadingSpinner>

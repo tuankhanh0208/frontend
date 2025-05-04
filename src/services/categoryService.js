@@ -1,10 +1,10 @@
-import axios from 'axios';
+import api from './api';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 export const getFeaturedProducts = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/e-commerce/categories`, {
+    const response = await api.get(`/api/e-commerce/categories`, {
       params: {
         is_featured: true,
         limit: 6
@@ -19,7 +19,7 @@ export const getFeaturedProducts = async () => {
 
 export const getAllCategories = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/e-commerce/categories`);
+    const response = await api.get(`/api/e-commerce/categories`);
     return response.data;
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -29,7 +29,7 @@ export const getAllCategories = async () => {
 
 export const getCategoryById = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/api/e-commerce/categories/${id}`);
+    const response = await api.get(`/api/e-commerce/categories/${id}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching category ${id}:`, error);
@@ -39,7 +39,7 @@ export const getCategoryById = async (id) => {
 
 export const getSubcategories = async (categoryId) => {
   try {
-    const response = await axios.get(`${API_URL}/api/e-commerce/categories/${categoryId}/subcategories`);
+    const response = await api.get(`/api/e-commerce/categories/${categoryId}/subcategories`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching subcategories for ${categoryId}:`, error);
@@ -49,7 +49,7 @@ export const getSubcategories = async (categoryId) => {
 
 export const getCategoriesTree = async (forceRefresh = false) => {
   try {
-    const response = await axios.get(`${API_URL}/api/e-commerce/categories-tree`, {
+    const response = await api.get(`/api/e-commerce/categories-tree`, {
       params: { force_refresh: forceRefresh }
     });
     return response.data;
@@ -62,9 +62,11 @@ export const getCategoriesTree = async (forceRefresh = false) => {
 // Admin Services
 export const getAdminCategories = async (skip = 0, limit = 50) => {
   try {
-    const response = await axios.get(`${API_URL}/api/admin/manage/categories`, {
+    console.log('Fetching admin categories with params:', { skip, limit });
+    const response = await api.get(`/api/admin/manage/categories`, {
       params: { skip, limit }
     });
+    console.log('Admin categories response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching admin categories:', error);
@@ -74,7 +76,7 @@ export const getAdminCategories = async (skip = 0, limit = 50) => {
 
 export const getAdminCategoryById = async (categoryId) => {
   try {
-    const response = await axios.get(`${API_URL}/api/admin/manage/categories/${categoryId}`);
+    const response = await api.get(`/api/admin/manage/categories/${categoryId}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching admin category ${categoryId}:`, error);
@@ -84,7 +86,7 @@ export const getAdminCategoryById = async (categoryId) => {
 
 export const createCategory = async (categoryData) => {
   try {
-    const response = await axios.post(`${API_URL}/api/admin/manage/categories`, categoryData);
+    const response = await api.post(`/api/admin/manage/categories`, categoryData);
     return response.data;
   } catch (error) {
     console.error('Error creating category:', error);
@@ -94,7 +96,7 @@ export const createCategory = async (categoryData) => {
 
 export const updateCategory = async (categoryId, categoryData) => {
   try {
-    const response = await axios.put(`${API_URL}/api/admin/manage/categories/${categoryId}`, categoryData);
+    const response = await api.put(`/api/admin/manage/categories/${categoryId}`, categoryData);
     return response.data;
   } catch (error) {
     console.error(`Error updating category ${categoryId}:`, error);
@@ -104,7 +106,7 @@ export const updateCategory = async (categoryId, categoryData) => {
 
 export const deleteCategory = async (categoryId) => {
   try {
-    const response = await axios.delete(`${API_URL}/api/admin/manage/categories/${categoryId}`);
+    const response = await api.delete(`/api/admin/manage/categories/${categoryId}`);
     return response.data;
   } catch (error) {
     console.error(`Error deleting category ${categoryId}:`, error);

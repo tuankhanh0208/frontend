@@ -131,11 +131,29 @@ const productService = {
   // Lấy sản phẩm nổi bật
   getFeaturedProducts: async () => {
     try {
-      const response = await api.get('/api/e-commerce/products/featured');
-      return response.data.map(product => formatProductData(product));
+      console.log('Gọi API lấy sản phẩm nổi bật');
+      // Thiết lập timeout 8 giây để tránh chờ quá lâu
+      const response = await api.get('/api/e-commerce/products/featured', {
+        timeout: 8000
+      });
+
+      console.log('Kết quả API sản phẩm nổi bật:', response.data);
+
+      // Kiểm tra dữ liệu hợp lệ
+      if (!response.data || !Array.isArray(response.data)) {
+        console.warn('API trả về dữ liệu không hợp lệ:', response.data);
+        return [];
+      }
+
+      // Định dạng dữ liệu sản phẩm
+      const formattedProducts = response.data.map(product => formatProductData(product));
+      console.log(`Đã định dạng ${formattedProducts.length} sản phẩm nổi bật`);
+
+      return formattedProducts;
     } catch (error) {
       console.error('Error fetching featured products:', error);
-      throw error;
+      // Trả về mảng rỗng thay vì ném lỗi
+      return [];
     }
   },
 
@@ -193,10 +211,21 @@ const productService = {
   // Lấy danh mục con theo ID danh mục cha
   getSubcategories: async (categoryId) => {
     try {
-      const response = await api.get(`/api/e-commerce/categories/${categoryId}/subcategories`);
+      // Nếu không có categoryId, lấy tất cả categories
+      const endpoint = categoryId
+        ? `${API_URL}/api/e-commerce/categories/${categoryId}/subcategories`
+        : `${API_URL}/api/e-commerce/categories`;
+
+      console.log('Fetching subcategories from endpoint:', endpoint);
+
+      const response = await axios.get(endpoint);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching subcategories for category ID ${categoryId}:`, error);
+      console.error('Error fetching subcategories:', error);
+      if (error.response?.status === 422) {
+        console.warn('Invalid category ID:', categoryId);
+        return [];
+      }
       throw error;
     }
   },
@@ -459,16 +488,27 @@ export const getProductsByCategory = async (categoryId) => {
 
 export const getFeaturedProducts = async () => {
   try {
+    console.log('Gọi API lấy sản phẩm nổi bật (export function)');
     const response = await axios.get(`${API_URL}/api/e-commerce/products`, {
       params: {
         is_featured: true,
         limit: 6
-      }
+      },
+      timeout: 8000 // Tăng timeout lên 8 giây
     });
+
+    // Kiểm tra dữ liệu hợp lệ
+    if (!response.data || !Array.isArray(response.data)) {
+      console.warn('API trả về dữ liệu không hợp lệ:', response.data);
+      return [];
+    }
+
+    console.log(`Nhận được ${response.data.length} sản phẩm nổi bật từ API`);
     return response.data;
   } catch (error) {
     console.error('Error fetching featured products:', error);
-    throw error;
+    // Trả về mảng rỗng thay vì ném lỗi
+    return [];
   }
 };
 
@@ -482,4 +522,38 @@ export const getProductById = async (id) => {
   }
 };
 
+export const voteReview = async (productId, reviewId, voteType) => {
+  try {
+    const response = await api.post(`/api/e-commerce/products/${productId}/reviews/${reviewId}/vote`, {
+      vote_type: voteType
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error voting review ID ${reviewId}:`, error);
+    throw error;
+  }
+};
+
+export const getSubcategories = async (categoryId) => {
+  try {
+    // Nếu không có categoryId, lấy tất cả categories
+    const endpoint = categoryId
+      ? `${API_URL}/api/e-commerce/categories/${categoryId}/subcategories`
+      : `${API_URL}/api/e-commerce/categories`;
+
+    console.log('Fetching subcategories from endpoint:', endpoint);
+
+    const response = await axios.get(endpoint);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subcategories:', error);
+    if (error.response?.status === 422) {
+      console.warn('Invalid category ID:', categoryId);
+      return [];
+    }
+    throw error;
+  }
+};
+
 export default productService;
+

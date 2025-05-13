@@ -9,8 +9,9 @@ import CartSummary from '../../components/cart/CartSummary/CartSummary';
 import { CartContext } from '../../context/CartContext';
 import { AuthContext } from '../../context/AuthContext';
 import orderService from '../../services/orderService';
-import zaloPayService from '../../services/zaloPayService';
+import payosService from '../../services/payosService';
 import { toast } from 'react-hot-toast';
+import { FaCreditCard, FaMoneyBillWave, FaInfoCircle } from 'react-icons/fa';
 
 const CheckoutContainer = styled.div`
   max-width: 1200px;
@@ -127,9 +128,39 @@ const RadioOption = styled.label`
   align-items: center;
   margin-bottom: 10px;
   cursor: pointer;
+  padding: 12px;
+  border: 1px solid ${props => props.selected ? '#4CAF50' : '#ddd'};
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: #4CAF50;
+    background-color: #f9f9f9;
+  }
   
   input {
     margin-right: 10px;
+  }
+`;
+
+const PaymentIcon = styled.div`
+  margin-right: 12px;
+  font-size: 1.5rem;
+  color: ${props => props.color || '#333'};
+`;
+
+const PaymentInfo = styled.div`
+  flex: 1;
+  
+  h4 {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #666;
   }
 `;
 
@@ -143,6 +174,26 @@ const PaymentDetails = styled.div`
 
 const OrderButton = styled(Button)`
   margin-top: 20px;
+`;
+
+const InfoMessage = styled.div`
+  background-color: #f8f9fa;
+  border-left: 4px solid #4CAF50;
+  padding: 10px 15px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  
+  svg {
+    margin-right: 10px;
+    margin-top: 2px;
+    color: #4CAF50;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
 `;
 
 const Checkout = () => {
@@ -212,13 +263,15 @@ const Checkout = () => {
         return;
       }
 
-      // Calculate shipping fee
-      const shippingFee = cart.totalAmount > 200000 ? 0 : 20000;
-
-      // Calculate total amount
-      const subtotal = cart.totalAmount;
-      const discount = cart.discount || 0;
-      const total = subtotal + shippingFee - discount;
+      // Tính tổng tiền sản phẩm (không cộng phí ship cho PayOS)
+      const subtotal = cart.items.reduce((sum, item) => sum + (Number(item.discountPrice || item.price) || 0) * item.quantity, 0);
+      const discount = Number(cart.discount) || 0;
+      let shippingFee = 0;
+      let total = subtotal;
+      if (values.paymentMethod === 'cod') {
+        shippingFee = cart.totalAmount > 200000 ? 0 : 20000;
+        total = subtotal + shippingFee - discount;
+      }
 
       console.log('Cart details:', {
         subtotal,
@@ -227,31 +280,26 @@ const Checkout = () => {
         total
       });
 
-      // Prepare order data
+      // Prepare cart items in the format backend expects
+      const cartItems = cart.items.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        price: Number(item.discountPrice || item.price) || 0
+      }));
+
+      // Prepare order data theo phương thức thanh toán
       const orderData = {
         user_id: currentUser.user_id,
-        customer: {
-          firstName: values.firstName,
-          lastName: values.lastName,
-          email: values.email,
-          phone: values.phone
-        },
-        shippingAddress: {
-          address: values.address,
-          city: values.city,
-          zipCode: values.zipCode
-        },
-        orderItems: cart.items.map(item => ({
-          productId: item.id,
-          quantity: item.quantity,
-          price: item.discountPrice || item.price
-        })),
-        paymentMethod: values.paymentMethod,
-        notes: values.notes,
-        subtotal: subtotal,
-        shipping: shippingFee,
-        discount: discount,
-        total: total
+        total_amount: total,
+        payment_method: values.paymentMethod === 'cod' ? 'COD' : 'payos',
+        items: cartItems,
+        status: 'pending',
+        recipient_name: `${values.firstName} ${values.lastName}`,
+        recipient_phone: values.phone,
+        shipping_address: values.address,
+        shipping_city: values.city,
+        shipping_province: values.province || '',
+        shipping_postal_code: values.zipCode
       };
 
       console.log('Submitting order data:', orderData);
@@ -259,39 +307,43 @@ const Checkout = () => {
       let order;
       if (values.paymentMethod === 'cod') {
         console.log('Creating COD order...');
+        // Gọi API tạo đơn hàng COD
         order = await orderService.createOrder(orderData);
         console.log('COD order created:', order);
-      } else if (values.paymentMethod.startsWith('zalopay')) {
-        console.log('Creating ZaloPay order...');
-        order = await zaloPayService.createOrder(orderData);
-        console.log('ZaloPay order created:', order);
-        // Redirect to ZaloPay payment page
-        if (order.order_url) {
-          window.location.href = order.order_url;
-          return;
-        }
-      }
 
-      console.log('Order created successfully, clearing cart...');
-      // Clear cart
-      clearCart();
+        // Xóa giỏ hàng
+        clearCart();
 
-      console.log('Redirecting to success page with order:', order);
-      // Redirect to success page with complete order data
-      navigate('/payment-success', {
-        state: {
-          order: {
-            ...order,
-            total: total,
-            paymentMethod: values.paymentMethod,
-            id: order.id || order.order_id
+        // Chuyển đến trang thành công
+        navigate('/payment-success', {
+          state: {
+            order: {
+              ...order,
+              total: total,
+              paymentMethod: 'COD',
+              id: order.order_id || order.id
+            }
           }
+        });
+      } else if (values.paymentMethod === 'payos') {
+        console.log('Creating PayOS order...');
+        // Gọi API thanh toán PayOS
+        const payosResponse = await payosService.createOrder(orderData);
+        console.log('PayOS order created:', payosResponse);
+
+        if (payosResponse && payosResponse.payment_url) {
+          // Nếu có URL thanh toán, chuyển hướng người dùng đến trang thanh toán
+          window.location.href = payosResponse.payment_url;
+        } else {
+          throw new Error('Không nhận được URL thanh toán từ PayOS');
         }
-      });
+      } else {
+        throw new Error('Phương thức thanh toán không hợp lệ');
+      }
     } catch (error) {
       console.error('Failed to process order:', error);
-      // Show error message to user
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi xử lý đơn hàng. Vui lòng thử lại sau.');
+      // Hiển thị thông báo lỗi
+      toast.error(error.message || 'Có lỗi xảy ra khi xử lý đơn hàng. Vui lòng thử lại sau.');
     } finally {
       setSubmitting(false);
     }
@@ -361,11 +413,16 @@ const Checkout = () => {
                     </FormGroup>
                   </FormRow>
 
-                  <SectionTitle>Payment Method</SectionTitle>
+                  <SectionTitle>Phương thức thanh toán</SectionTitle>
+
+                  <InfoMessage>
+                    <FaInfoCircle />
+                    <p>Vui lòng chọn một trong hai phương thức thanh toán dưới đây để hoàn tất đơn hàng.</p>
+                  </InfoMessage>
 
                   <FormGroup>
                     <RadioGroup>
-                      <RadioOption>
+                      <RadioOption selected={values.paymentMethod === 'cod'}>
                         <Field
                           type="radio"
                           name="paymentMethod"
@@ -376,27 +433,43 @@ const Checkout = () => {
                             setSelectedPayment('cod');
                           }}
                         />
-                        Thanh toán khi nhận hàng (COD)
+                        <PaymentIcon color="#ffc107">
+                          <FaMoneyBillWave />
+                        </PaymentIcon>
+                        <PaymentInfo>
+                          <h4>Thanh toán khi nhận hàng (COD)</h4>
+                          <p>Bạn sẽ thanh toán bằng tiền mặt khi nhận hàng</p>
+                        </PaymentInfo>
                       </RadioOption>
 
-                      <RadioOption>
+                      <RadioOption selected={values.paymentMethod === 'payos'}>
                         <Field
                           type="radio"
                           name="paymentMethod"
-                          value="zalopay"
-                          checked={values.paymentMethod === 'zalopay'}
+                          value="payos"
+                          checked={values.paymentMethod === 'payos'}
                           onChange={() => {
-                            setFieldValue('paymentMethod', 'zalopay');
-                            setSelectedPayment('zalopay');
+                            setFieldValue('paymentMethod', 'payos');
+                            setSelectedPayment('payos');
                           }}
                         />
-                        Thanh toán qua ZaloPay
+                        <PaymentIcon color="#2196f3">
+                          <FaCreditCard />
+                        </PaymentIcon>
+                        <PaymentInfo>
+                          <h4>Thanh toán online qua PayOS</h4>
+                          <p>Thanh toán an toàn bằng thẻ ATM, VISA, MasterCard và các ví điện tử</p>
+                        </PaymentInfo>
                       </RadioOption>
                     </RadioGroup>
 
-                    <PaymentDetails visible={selectedPayment === 'zalopay'}>
-                      <p>Bạn sẽ được chuyển hướng đến cổng thanh toán ZaloPay để hoàn tất giao dịch.</p>
-                      <p>Vui lòng không đóng cửa sổ trình duyệt cho đến khi thanh toán hoàn tất.</p>
+                    <PaymentDetails visible={selectedPayment === 'cod'}>
+                      <p>Bạn sẽ thanh toán khi nhận hàng. Vui lòng chuẩn bị đúng số tiền.</p>
+                    </PaymentDetails>
+
+                    <PaymentDetails visible={selectedPayment === 'payos'}>
+                      <p>Bạn sẽ được chuyển đến cổng thanh toán PayOS để hoàn tất giao dịch.</p>
+                      <p>Hỗ trợ thanh toán bằng thẻ ATM/VISA/Mastercard và ví điện tử.</p>
                     </PaymentDetails>
                   </FormGroup>
 

@@ -210,25 +210,21 @@ const Dashboard = () => {
   const fetchDashboardData = async (forceRefresh = false) => {
     setIsLoading(true);
     try {
-      // Lấy thống kê dashboard
       const stats = await adminService.getDashboardStats(forceRefresh);
-      // Lấy đơn hàng gần đây
       const recentOrdersResponse = await adminService.getRecentOrders(5, forceRefresh);
-      // Lấy dữ liệu doanh thu
       const revenueResponse = await adminService.getRevenueOverview(timeRange, forceRefresh);
 
       setDashboardData({
-        totalOrders: stats.total_orders,
-        totalRevenue: stats.total_revenue,
-        totalCustomers: stats.total_customers,
-        totalProducts: stats.total_products,
-        recentOrders: recentOrdersResponse.orders || [],
-        revenueData: revenueResponse.revenue_periods || []
+        totalOrders: stats?.total_orders ?? 0,
+        totalRevenue: stats?.total_revenue ?? 0,
+        totalCustomers: stats?.total_users ?? 0,
+        totalProducts: stats?.total_products ?? 0,
+        recentOrders: recentOrdersResponse?.orders ?? [],
+        revenueData: revenueResponse?.data ?? []
       });
       return true;
     } catch (error) {
       console.error('Lỗi khi lấy dữ liệu dashboard:', error);
-      // Giữ nguyên dữ liệu cũ nếu có lỗi
       return false;
     } finally {
       setIsLoading(false);
@@ -263,6 +259,7 @@ const Dashboard = () => {
   };
 
   const formatCurrency = (value) => {
+    if (!value || isNaN(value)) return '0 ₫';
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
@@ -308,7 +305,7 @@ const Dashboard = () => {
                 <FaMoneyBillWave />
               </StatIcon>
               <StatContent>
-                <StatValue>{formatCurrency(dashboardData.totalRevenue)}</StatValue>
+                <StatValue>{formatCurrency(dashboardData.totalRevenue ?? 0)}</StatValue>
                 <StatLabel>Tổng doanh thu</StatLabel>
               </StatContent>
             </StatCard>
@@ -318,7 +315,7 @@ const Dashboard = () => {
                 <FaUsers />
               </StatIcon>
               <StatContent>
-                <StatValue>{dashboardData.totalCustomers}</StatValue>
+                <StatValue>{dashboardData.totalCustomers ?? 0}</StatValue>
                 <StatLabel>Tổng khách hàng</StatLabel>
               </StatContent>
             </StatCard>
@@ -366,7 +363,7 @@ const Dashboard = () => {
                 </TimeRangeSelector>
               </ChartHeader>
               <RevenueChart
-                revenueData={dashboardData.revenueData}
+                revenueData={Array.isArray(dashboardData.revenueData) ? dashboardData.revenueData : []}
                 timeRange={timeRange}
                 loading={isLoading}
               />
@@ -392,7 +389,7 @@ const Dashboard = () => {
                       <tr key={order.order_id}>
                         <td>#{order.order_id}</td>
                         <td>{new Date(order.created_at).toLocaleDateString('vi-VN')}</td>
-                        <td>{order.customer_name || order.customer?.name || order.customerName || 'Khách hàng'}</td>
+                        <td>{order.receiver_name || order.user_name || 'Khách hàng'}</td>
                         <td>{formatCurrency(order.total_amount)}</td>
                         <td className={`status-${order.status.toLowerCase()}`}>
                           {order.status.toUpperCase() === 'PENDING' && 'Chờ xử lý'}

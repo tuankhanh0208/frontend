@@ -4,8 +4,10 @@ import jwtDecode from 'jwt-decode';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 import emailjs from '@emailjs/browser';
+import { API_URL } from '../config';
 
-const API_URL = 'http://localhost:8000/api/auth';
+// Cấu hình axios mặc định
+axios.defaults.withCredentials = true;
 
 // EmailJS Configuration
 const EMAILJS_CONFIG = {

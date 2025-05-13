@@ -47,6 +47,7 @@ import AdminOrders from './pages/admin/OrderList';
 import AdminOrdersSimple from './pages/admin/OrderListSimple';
 import AdminCategories from './pages/admin/CategoryList';
 import NotFound from './pages/NotFound';
+import About from './pages/About';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => {
                       <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/search" element={<SearchResults />} />
                       <Route path="/cart" element={<Cart />} />
+                      <Route path="/about" element={<About />} />
 
                       {/* Auth Routes */}
                       <Route path="/login" element={

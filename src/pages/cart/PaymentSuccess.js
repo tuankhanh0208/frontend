@@ -74,12 +74,12 @@ const PaymentSuccess = () => {
 
   const getPaymentMethodText = (method) => {
     switch (method) {
-      case 'zalopay':
-        return 'Thanh toán qua ZaloPay';
       case 'cod':
         return 'Thanh toán khi nhận hàng (COD)';
+      case 'payos':
+        return 'Thanh toán qua PayOS';
       default:
-        return method;
+        return 'Thanh toán';
     }
   };
 
@@ -123,7 +123,7 @@ const PaymentSuccess = () => {
           <Button
             variant="primary"
             as={Link}
-            to="/orders"
+            to="/profile#orders"
             leftIcon={<FaListAlt />}
           >
             Xem đơn hàng của tôi

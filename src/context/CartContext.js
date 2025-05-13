@@ -187,7 +187,6 @@ export const CartProvider = ({ children }) => {
 
       console.log('Cart synced with server');
       setSyncRetryCount(0); // Reset retry count on success
-      toast.success('Đã đồng bộ giỏ hàng với server');
     } catch (error) {
       console.error('Failed to sync cart with server:', error);
       setSyncError(error.message);

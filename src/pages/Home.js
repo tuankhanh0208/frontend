@@ -270,15 +270,20 @@ const Home = () => {
 
         // Fetch featured products
         const productsData = await getFeaturedProducts();
-        console.log('Featured products raw data:', JSON.stringify(productsData, null, 2));
-        setFeaturedProducts(productsData);
+        console.log('Featured products raw data:', productsData);
+
+        // Chuyển đổi dữ liệu nếu cần thiết
+        const formatted = Array.isArray(productsData) ? productsData : [];
+        setFeaturedProducts(formatted);
 
         // Fetch categories
         const categoriesData = await getAllCategories();
-        console.log('Categories raw data:', JSON.stringify(categoriesData, null, 2));
+        console.log('Categories raw data:', categoriesData);
         setCategories(categoriesData);
       } catch (error) {
         console.error('Error fetching data:', error);
+        // Đặt sản phẩm trống để tránh lỗi
+        setFeaturedProducts([]);
       } finally {
         setLoading(false);
         setCategoryLoading(false);
@@ -329,30 +334,47 @@ const Home = () => {
         <ProductsGrid>
           {loading ? (
             <p>Đang tải sản phẩm...</p>
+          ) : featuredProducts.length === 0 ? (
+            <p>Không có sản phẩm nổi bật</p>
           ) : (
             featuredProducts.map(product => {
-              // Tìm ảnh chính (primary image)
-              const primaryImage = product.images?.find(img => img.is_primary) || product.images?.[0];
+              // Xác định ID sản phẩm
+              const productId = product.id || product.product_id;
+              // Xử lý ảnh sản phẩm
+              let productImage = '';
+
+              // Kiểm tra cấu trúc ảnh
+              if (product.image) {
+                // Nếu đã có thuộc tính image
+                productImage = product.image;
+              } else if (Array.isArray(product.images) && product.images.length > 0) {
+                if (typeof product.images[0] === 'string') {
+                  // Nếu images là mảng các URL
+                  productImage = product.images[0];
+                } else if (product.images[0].image_url) {
+                  // Nếu images là mảng các đối tượng có image_url
+                  productImage = product.images[0].image_url;
+                }
+              }
 
               console.log('Product data:', {
-                id: product.product_id,
+                id: productId,
                 name: product.name,
-                price: product.price,
-                original_price: product.original_price,
-                unit: product.unit
+                price: product.price || product.discountPrice,
+                original_price: product.original_price || product.originalPrice,
+                image: productImage
               });
 
               return (
                 <ProductCard
-                  key={product.product_id}
+                  key={productId}
                   product={{
-                    id: product.product_id,
+                    id: productId,
                     name: product.name,
-                    price: Number(product.price), // Chuyển đổi sang số
-                    original_price: Number(product.original_price), // Chuyển đổi sang số
-                    image: primaryImage?.image_url,
-                    images: product.images,
-                    unit: product.unit
+                    price: Number(product.price || product.discountPrice || 0),
+                    original_price: Number(product.original_price || product.originalPrice || 0),
+                    image: productImage,
+                    unit: product.unit || 'kg'
                   }}
                 />
               );

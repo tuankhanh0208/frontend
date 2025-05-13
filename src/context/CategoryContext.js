@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import productService from '../services/productService';
+import { getSubcategories } from '../services/productService';
 
 /**
  * CategoryContext
@@ -27,6 +27,40 @@ export const CategoryProvider = ({ children }) => {
   // Thêm state để xác định xem người dùng đang quay lại hay không
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
 
+  // Thêm useEffect để load subcategories khi component mount
+  useEffect(() => {
+    const loadSubcategories = async () => {
+      try {
+        // Lấy tất cả categories
+        const categories = await getSubcategories();
+        if (categories && categories.length > 0) {
+          const newMap = {};
+          // Lấy subcategories cho từng category
+          for (const category of categories) {
+            if (category.category_id) {
+              try {
+                const subcategories = await getSubcategories(category.category_id);
+                if (subcategories && subcategories.length > 0) {
+                  newMap[category.category_id] = subcategories;
+                }
+              } catch (error) {
+                console.error(`Error loading subcategories for category ${category.category_id}:`, error);
+                // Tiếp tục với category tiếp theo nếu có lỗi
+                continue;
+              }
+            }
+          }
+          setSubcategoriesMap(newMap);
+          console.log('CategoryContext: subcategoriesMap updated', newMap);
+        }
+      } catch (error) {
+        console.error('Error loading subcategories:', error);
+      }
+    };
+
+    loadSubcategories();
+  }, []);
+
   // Hàm lấy danh mục con từ API hoặc cache, memoize bằng useCallback
   const fetchSubcategories = useCallback(async (categoryId, forceRefresh = false) => {
     if (!categoryId) {
@@ -51,7 +85,7 @@ export const CategoryProvider = ({ children }) => {
 
     try {
       console.log('CategoryContext: Fetching subcategories for', categoryId, forceRefresh ? '(forced)' : '');
-      const data = await productService.getSubcategories(categoryId);
+      const data = await getSubcategories(categoryId);
 
       // Nếu API trả về dữ liệu hợp lệ, lưu vào cache
       if (data && Array.isArray(data) && data.length > 0) {

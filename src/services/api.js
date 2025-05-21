@@ -11,7 +11,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true
+  withCredentials: true,
+  timeout: 30000 // 30 seconds timeout
 });
 
 // Interceptor để xử lý request
@@ -69,5 +70,9 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Cài đặt axios global defaults
+axios.defaults.withCredentials = true;
+axios.defaults.timeout = 30000;
 
 export default api;

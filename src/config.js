@@ -1,12 +1,15 @@
 // API Configuration
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 // PayOS Configuration
 export const PAYOS_CONFIG = {
     clientId: '8beadbae-a0e7-4923-b5e9-f49fcadd3ca4',
     apiKey: '760cfb21-3d78-428e-b556-3a41060d8a42',
     callbackUrl: 'http://localhost:3000/payment/payos/callback',
-    apiUrl: 'https://payosapi.com/transaction'
+    apiUrl: 'https://api-sandbox.payos.vn/v2/payment-requests',
+    useSandbox: true,
+    listsBankUrl: process.env.REACT_APP_LISTS_BANK_URL || 'https://api.vietqr.io/v2/banks',
+    scriptUrl: process.env.REACT_APP_PAYOS_SCRIPT || 'https://cdn.payos.vn/payos-checkout/v1/stable/payos-initialize.js'
 };
 
 // Company Information

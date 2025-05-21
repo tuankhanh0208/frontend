@@ -1,5 +1,5 @@
 // src/App.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 
@@ -48,7 +48,14 @@ import AdminOrdersSimple from './pages/admin/OrderListSimple';
 import AdminCategories from './pages/admin/CategoryList';
 import NotFound from './pages/NotFound';
 import About from './pages/About';
+import PayOSCallback from './pages/payment/PayOSCallback';
+import PayOSPayment from './pages/payment/PayOSPayment';
 import './App.css';
+
+// Import PayOS test utils - chỉ chạy trong môi trường development
+if (process.env.NODE_ENV === 'development') {
+  require('./utils/payosTest');
+}
 
 const queryClient = new QueryClient();
 
@@ -73,6 +80,11 @@ const App = () => {
                       <Route path="/search" element={<SearchResults />} />
                       <Route path="/cart" element={<Cart />} />
                       <Route path="/about" element={<About />} />
+
+                      {/* Payment Routes */}
+                      <Route path="/payment/success" element={<PayOSCallback />} />
+                      <Route path="/payment/payos/:orderCode" element={<PayOSPayment />} />
+                      <Route path="/payment/payos" element={<PayOSPayment />} />
 
                       {/* Auth Routes */}
                       <Route path="/login" element={
